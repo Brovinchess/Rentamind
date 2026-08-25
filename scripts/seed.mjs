@@ -51,8 +51,6 @@ const realListings = [
       { q: "How would Travis announce a surprise album this weekend?", a: "No warning. One cryptic frame on IG at 3am — a burning ferris wheel — then the pre-save link goes live at midnight. It's not a rollout, it's a sighting." },
       { q: "Would he collab with an AI producer?", a: "If it sounds like nothing else on earth? Straight up. But it has to feel raw — he'd bury the credit deep in the liner notes and let the mystery cook." },
     ],
-    rating: 4.7,
-    rating_count: 89,
   }),
   realListing("lebronjames", {
     title: "King James Mind",
@@ -67,8 +65,6 @@ const realListings = [
     sample_qa: [
       { q: "Does he take a minimum deal to chase ring five?", a: "History says no — every move balanced legacy AND business. He'd take the mid-level exception structured around ownership optics before he ever takes the minimum." },
     ],
-    rating: 4.8,
-    rating_count: 132,
   }),
   realListing("Tiger.Wood", {
     title: "Tiger Mind",
@@ -83,8 +79,6 @@ const realListings = [
     sample_qa: [
       { q: "Driver or stinger on a 310-yard par 4 with water left?", a: "Stinger 2-iron, every time it matters. The pin position decides the second shot, not the tee shot. Water left means the miss is right, short, boring — and lethal." },
     ],
-    rating: 4.6,
-    rating_count: 64,
   }),
   realListing("itachi", {
     title: "Itachi Mind",
@@ -99,8 +93,6 @@ const realListings = [
     sample_qa: [
       { q: "My co-founder wants to pivot. How do I play the board meeting?", a: "Let them present first, fully. People defend hardest what they haven't finished saying. Then concede the strongest 20% of their case before you counter — the room will follow whoever looked least afraid." },
     ],
-    rating: 4.9,
-    rating_count: 41,
   }),
   realListing("timotheechalamet", {
     title: "Chalamet Mind",
@@ -115,8 +107,6 @@ const realListings = [
     sample_qa: [
       { q: "Biopic of a 90s tech founder — take the role?", a: "Only if the script is about the loneliness, not the keynote. He picks interiority over imitation — if the third act is a product launch, pass." },
     ],
-    rating: 4.5,
-    rating_count: 57,
   }),
 ].filter(Boolean);
 
