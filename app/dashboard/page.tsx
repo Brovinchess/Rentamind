@@ -114,8 +114,11 @@ export default async function Dashboard() {
         </table>
       </div>
 
-      <div style={{ marginTop: 18 }}>
+      <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
         <ListMindForm minds={unlisted.map((m) => ({ mindId: m.mindId, name: m.name }))} />
+        <Link href="/launch" className="btn btn-outline">
+          Launch a new Mind
+        </Link>
       </div>
 
       <h3 style={{ marginTop: 38 }}>Rentals on your listings</h3>

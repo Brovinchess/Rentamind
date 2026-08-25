@@ -6,7 +6,15 @@ type Msg = { fingerprint?: string; text: string; fromMind: boolean; pending?: bo
 
 const POLL_MS = 8_000;
 
-export default function ChatBox({ listingId, mindId }: { listingId?: string; mindId?: string }) {
+export default function ChatBox({
+  listingId,
+  mindId,
+  starters,
+}: {
+  listingId?: string;
+  mindId?: string;
+  starters?: { label: string; text: string }[];
+}) {
   const targetQuery = listingId ? `listingId=${listingId}` : `mindId=${mindId}`;
   const targetBody = listingId ? { listingId } : { mindId };
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -109,6 +117,20 @@ export default function ChatBox({ listingId, mindId }: { listingId?: string; min
         {waiting ? <div className="thinking">the Mind is reasoning (burns real cognition)</div> : null}
       </div>
       {error ? <p style={{ color: "var(--danger)", fontSize: "0.82rem", margin: "8px 0 0" }}>{error}</p> : null}
+      {starters?.length && !messages.some((m) => !m.fromMind) ? (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingTop: 10 }}>
+          {starters.map((s) => (
+            <button
+              key={s.label}
+              className="btn btn-ghost btn-sm"
+              onClick={() => setInput(s.text)}
+              disabled={waiting}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="chat-input">
         <input
           placeholder="Ask the Mind anything…"

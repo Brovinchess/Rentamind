@@ -41,7 +41,27 @@ export default async function TalkPage({ params }: { params: Promise<{ mindId: s
         )}
       </div>
 
-      <ChatBox mindId={mindId} />
+      <ChatBox
+        mindId={mindId}
+        starters={[
+          {
+            label: "Set its specialty",
+            text: "From now on, you are a specialist. Here is your subject and how you should think about it: ",
+          },
+          {
+            label: "Feed it knowledge",
+            text: "Study the following material and store it in your long-term memory. Tell me the three most important things you learned: ",
+          },
+          {
+            label: "Test it",
+            text: "Based on everything you know so far, how would you respond to this scenario: ",
+          },
+          {
+            label: "Audit its memory",
+            text: "Summarize everything you currently know about your subject, and how you have been told to behave. Be specific.",
+          },
+        ]}
+      />
 
       <div className="notice" style={{ marginTop: 18 }}>
         <b>Training tips:</b> feed it source material and correct its answers — everything you say

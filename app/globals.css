@@ -189,6 +189,29 @@ h2.section-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em;
 }
 .filters a.active { background: var(--brand); border-color: var(--brand); color: #fff; }
 
+/* ── numbered journey ── */
+ol.journey { counter-reset: step; list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 10px; }
+ol.journey li {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px 14px 54px;
+  position: relative;
+}
+ol.journey li::before {
+  counter-increment: step;
+  content: counter(step);
+  position: absolute; left: 16px; top: 15px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: var(--font-space-mono), monospace;
+  font-weight: 700; font-size: 0.8rem;
+  display: flex; align-items: center; justify-content: center;
+}
+ol.journey .sub { color: var(--muted); font-size: 0.92rem; }
+
 /* ── tables ── */
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
 table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }

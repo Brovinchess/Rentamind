@@ -28,8 +28,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/dashboard">Steward Dashboard</Link>
               <Link href="/points">Synapses</Link>
             </nav>
-            <Link href="/dashboard" className="header-cta">
-              List your Mind
+            <Link href="/launch" className="header-cta">
+              Launch a Mind
             </Link>
           </div>
         </header>
