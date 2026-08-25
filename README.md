@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Rent a Mind
 
-## Getting Started
+A marketplace demo built on [HelloMinds](https://hellominds.ai) (by Animoca Brands): stewards train Minds into specialists or personas, list them for rent, and renters get **direct, time-boxed access to the live trained Mind** — while both sides farm **Synapses** points toward a future airdrop.
 
-First, run the development server:
+> Concept + full product spec: [docs/CONCEPT.md](docs/CONCEPT.md)
+
+## How it works
+
+- **Renting = a real Circle grant.** Checkout adds the renter's email to the Mind's Circle via the HelloMinds Builder API; expiry removes it. The renter talks to the actual Mind on web chat, email, or Telegram.
+- **Rentals settle in Cognition.** The rental payment is a cognition top-up to the rented Mind (simulated checkout in this demo; native per-Mind Stripe top-up in production).
+- **Synapses are burn-backed.** Training activity, rental supply, and renter usage all earn points; a settlement pass meters real cognition burned during rental windows.
+
+## Stack
+
+- Next.js 16 (App Router) — UI in the HelloMinds visual language
+- `@animocabrands/minds-client-lib` — live Minds, balances, usage, circles, messaging (SSE/waitForReply)
+- Supabase Postgres — `ram_listings`, `ram_rentals`, `ram_points_events`, `ram_ratings` (RLS on, service-role only)
+
+## Run it
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in your keys (see below)
+# create tables: run supabase/schema.sql in your Supabase SQL editor
+npm run seed                 # seed listings + leaderboard (npm run seed:fresh to wipe)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` (never committed):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Var | What |
+|---|---|
+| `MINDS_BUILDER_API_KEY` | HelloMinds Builder API key (steward session) |
+| `MINDS_HUMAN_ID` | Your humanId (also embedded in the key) |
+| `MINDS_STEWARD_EMAIL` | Steward email shown in the dashboard |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Demo scope
 
-## Learn More
+Live: steward dashboard (real Minds, balances, 30-day burn, Training Scores), listing detail stats, **real circle add/remove on rent/expiry**, live chat with rented Minds, usage-metered Synapses settlement. Seeded: fictional listings (POTUS45, Neuro, Whale Watch, Scout), leaderboard rivals, ratings.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Persona Minds are simulations — parody, not affiliation. Nothing here is financial or medical advice. Not an official HelloMinds product.
