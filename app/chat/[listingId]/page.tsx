@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
+import MindIcon from "@/components/MindIcon";
 import { getListing } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function ChatPage({
         ← Back to {listing.title}
       </Link>
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0 4px" }}>
-        <div className="avatar">{listing.emoji}</div>
+        <div className="avatar"><MindIcon hint={listing.emoji} size={26} /></div>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>{listing.title}</h2>
           <span className="mono" style={{ fontSize: "0.72rem", color: "var(--muted)" }}>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import RentPanel from "@/components/RentPanel";
+import MindIcon from "@/components/MindIcon";
 import { LiveBadge, Stars } from "@/components/MindCard";
 import { getListing, getRentalsForListing } from "@/lib/db";
 import { getLiveMindStats, trainingScore, type LiveMindStats } from "@/lib/minds";
@@ -29,7 +30,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       <Link href="/" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>← Back to the Mindshelf</Link>
 
       <div className="detail-hero" style={{ marginTop: 18 }}>
-        <div className="avatar">{listing.emoji}</div>
+        <div className="avatar"><MindIcon hint={listing.emoji} size={34} /></div>
         <div style={{ flex: 1, minWidth: 260 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <h1 style={{ margin: 0, fontSize: "1.8rem", fontWeight: 800 }}>{listing.title}</h1>

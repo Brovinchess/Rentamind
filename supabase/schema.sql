@@ -15,7 +15,7 @@ create table if not exists ram_listings (
   description text not null default '',
   category text not null default 'Experts',
   tags text[] not null default '{}',
-  emoji text not null default '🧠',
+  emoji text not null default 'brain',
   label text not null default '',      -- e.g. 'PARODY', 'INFO ONLY'
   sample_qa jsonb not null default '[]',
   rate_cognition_per_day numeric not null default 100,

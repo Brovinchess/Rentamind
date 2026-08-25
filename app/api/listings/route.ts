@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       tagline: tagline ?? "",
       description: description ?? "",
       category: category ?? "Experts",
-      emoji: emoji ?? "🧠",
+      emoji: emoji ?? "brain",
       label: label ?? "",
       rate_cognition_per_day: Math.max(10, Number(ratePerDay) || 100),
       is_seeded: false,

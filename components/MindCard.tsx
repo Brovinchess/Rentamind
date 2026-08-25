@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Star } from "lucide-react";
+import MindIcon from "@/components/MindIcon";
 import type { Listing } from "@/lib/types";
 
 export function Stars({ rating, count }: { rating: number; count?: number }) {
@@ -6,9 +8,16 @@ export function Stars({ rating, count }: { rating: number; count?: number }) {
   const full = Math.round(rating);
   return (
     <span className="stars" title={`${rating.toFixed(1)} / 5`}>
-      {"★".repeat(full)}
-      {"☆".repeat(5 - full)}
-      {count ? <span style={{ color: "var(--muted)", marginLeft: 4, letterSpacing: 0 }}>({count})</span> : null}
+      {Array.from({ length: 5 }, (_, i) => (
+        <Star
+          key={i}
+          size={13}
+          strokeWidth={1.8}
+          fill={i < full ? "currentColor" : "none"}
+          aria-hidden
+        />
+      ))}
+      {count ? <span style={{ color: "var(--muted)", marginLeft: 4 }}>({count})</span> : null}
     </span>
   );
 }
@@ -26,7 +35,7 @@ export default function MindCard({ listing, score }: { listing: Listing; score?:
   return (
     <Link href={`/mind/${listing.id}`} className="card mind-card">
       <div className="top">
-        <div className="avatar">{listing.emoji}</div>
+        <div className="avatar"><MindIcon hint={listing.emoji} size={24} /></div>
         <div>
           <h3>{listing.title}</h3>
           <span className="handle">@{listing.mind_name} · by {listing.steward_name}</span>

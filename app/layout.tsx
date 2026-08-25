@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Space_Mono } from "next/font/google";
 import Link from "next/link";
+import { Brain } from "lucide-react";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
@@ -19,7 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="site-header">
           <div className="container inner">
             <Link href="/" className="wordmark">
-              🧠 Rent a Mind <span className="beta">DEMO</span>
+              <Brain size={21} strokeWidth={2.4} className="wordmark-icon" aria-hidden />
+              Rent a Mind <span className="beta">DEMO</span>
             </Link>
             <nav className="nav">
               <Link href="/">Marketplace</Link>

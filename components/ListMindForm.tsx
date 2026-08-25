@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ICON_CHOICES } from "@/components/MindIcon";
 
 const CATEGORIES = ["Personas", "Experts", "Trading", "Sports", "Culture"];
 
@@ -21,7 +22,7 @@ export default function ListMindForm({
     description: "",
     category: "Personas",
     ratePerDay: 100,
-    emoji: "🧠",
+    emoji: "brain",
   });
 
   if (!minds.length) return null;
@@ -77,7 +78,7 @@ export default function ListMindForm({
         <label htmlFor="lm-desc">What did you train it on?</label>
         <textarea id="lm-desc" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px", gap: 10 }}>
         <div className="field">
           <label htmlFor="lm-cat">Category</label>
           <select id="lm-cat" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
@@ -89,8 +90,12 @@ export default function ListMindForm({
           <input id="lm-rate" type="number" min={10} value={form.ratePerDay} onChange={(e) => setForm({ ...form, ratePerDay: Number(e.target.value) })} />
         </div>
         <div className="field">
-          <label htmlFor="lm-emoji">Emoji</label>
-          <input id="lm-emoji" value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} />
+          <label htmlFor="lm-icon">Icon</label>
+          <select id="lm-icon" value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })}>
+            {ICON_CHOICES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
         </div>
       </div>
       <div style={{ display: "flex", gap: 10 }}>

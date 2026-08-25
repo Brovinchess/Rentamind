@@ -44,7 +44,7 @@ const realListings = [
       "Trained on years of interviews, lyrics, production choices and album rollouts. Ask it how Travis would market a drop, react to a headline, or what he'd say on stage. The longer it trains, the sharper the voice.",
     category: "Personas",
     tags: ["music", "culture", "marketing"],
-    emoji: "🎤",
+    emoji: "mic",
     label: "PARODY",
     rate_cognition_per_day: 120,
     sample_qa: [
@@ -61,7 +61,7 @@ const realListings = [
       "Every career decision, presser, and fourth-quarter read, distilled. Rent it for takes on trades, legacy math, and what LeBron would actually do next. Sports desks: this is your instant columnist sparring partner.",
     category: "Sports",
     tags: ["nba", "analysis", "predictions"],
-    emoji: "🏀",
+    emoji: "trophy",
     label: "PARODY",
     rate_cognition_per_day: 150,
     sample_qa: [
@@ -77,7 +77,7 @@ const realListings = [
       "Major-by-major decision history, swing philosophy eras, and tournament strategy. Ask how Tiger would play any hole, read any leaderboard, or manage a Sunday back nine.",
     category: "Sports",
     tags: ["golf", "strategy"],
-    emoji: "⛳",
+    emoji: "flag",
     label: "PARODY",
     rate_cognition_per_day: 100,
     sample_qa: [
@@ -93,7 +93,7 @@ const realListings = [
       "A strategist persona trained on lore, tactics, and the art of the long game. Surprisingly good at product strategy and negotiation prep — it thinks three moves ahead and tells you which sacrifice you're not seeing.",
     category: "Culture",
     tags: ["anime", "strategy", "negotiation"],
-    emoji: "🌙",
+    emoji: "moon",
     label: "",
     rate_cognition_per_day: 80,
     sample_qa: [
@@ -109,7 +109,7 @@ const realListings = [
       "Trained on festival circuits, role choices, and a decade of film culture. Rent it for script coverage with taste, press-tour simulations, or 'would he take this role?' calls.",
     category: "Culture",
     tags: ["film", "media"],
-    emoji: "🎬",
+    emoji: "film",
     label: "PARODY",
     rate_cognition_per_day: 90,
     sample_qa: [
@@ -126,7 +126,7 @@ const seeded = [
     mind_id: null, mind_name: "potus45", steward_email: "labs@magamind.xyz", steward_name: "MAGAmind Labs",
     title: "POTUS45 Mind", tagline: "Predicts the next post before it's posted.",
     description: "Trained on 60k tweets, every rally transcript, four years of decisions and two campaigns. Give it a scenario — a court ruling, a market crash, a rival's gaffe — and it drafts the reaction, in the voice, with the caps lock where the caps lock would be. Simulation for research and entertainment; not affiliated with any real person.",
-    category: "Personas", tags: ["politics", "prediction", "media"], emoji: "🇺🇸", label: "PARODY",
+    category: "Personas", tags: ["politics", "prediction", "media"], emoji: "landmark", label: "PARODY",
     rate_cognition_per_day: 300, training_score: 940, rating: 4.8, rating_count: 1204, is_seeded: true,
     sample_qa: [
       { q: "Fed cuts rates 50bps tomorrow. The post?", a: "\"Jerome finally listened to me. Rates WAY down (should have been done two years ago!). The Economy will be the GREATEST in history. Thank you for your attention to this matter!\"" },
@@ -137,7 +137,7 @@ const seeded = [
     mind_id: null, mind_name: "neuromind", steward_email: "vega@neurorent.io", steward_name: "Dr. Vega",
     title: "Neuro Mind", tagline: "A neurosurgery library that answers back.",
     description: "Fed 8 years of journals, case digests, and conference proceedings. Rent it to unpack surgical news, decode a paper, or prep informed questions for a specialist appointment. Informational only — it will refuse to give medical advice.",
-    category: "Experts", tags: ["medicine", "research"], emoji: "🩺", label: "INFO ONLY",
+    category: "Experts", tags: ["medicine", "research"], emoji: "stethoscope", label: "INFO ONLY",
     rate_cognition_per_day: 250, training_score: 910, rating: 4.9, rating_count: 866, is_seeded: true,
     sample_qa: [
       { q: "That new glioblastoma trial in the news — real breakthrough?", a: "Phase II, n=47, no control arm — promising signal on progression-free survival but the headline is ahead of the evidence. Here's what the endpoints actually measured, and what a Phase III would need to show…" },
@@ -147,7 +147,7 @@ const seeded = [
     mind_id: null, mind_name: "whalewatch", steward_email: "ops@whalewatch.eth", steward_name: "whalewatcher.eth",
     title: "Whale Watch Mind", tagline: "It remembers every wallet you've ever wondered about.",
     description: "Eleven months of on-chain pattern training across Base, Ethereum and Solana. Ask it who's accumulating, which cluster just woke up, and what happened the last three times this exact pattern appeared.",
-    category: "Trading", tags: ["crypto", "on-chain", "alerts"], emoji: "🐋", label: "",
+    category: "Trading", tags: ["crypto", "on-chain", "alerts"], emoji: "waves", label: "",
     rate_cognition_per_day: 200, training_score: 835, rating: 4.6, rating_count: 412, is_seeded: true,
     sample_qa: [
       { q: "Big $MENTE cluster moved to a CEX. Bearish?", a: "Same cluster did this twice before — both times it was OTC repositioning, not a dump: outflows returned to fresh cold wallets within 72h. Watch the return path, not the deposit." },
@@ -157,7 +157,7 @@ const seeded = [
     mind_id: null, mind_name: "scoutmind", steward_email: "kenji@transferroom.ai", steward_name: "kenji.builds",
     title: "Scout Mind", tagline: "Every transfer window since 2015, on recall.",
     description: "Trained on transfer histories, tactical systems, and scouting reports. Rent during the window: it flags which rumors fit the club's actual system and which are agent noise.",
-    category: "Sports", tags: ["football", "transfers", "scouting"], emoji: "⚽", label: "",
+    category: "Sports", tags: ["football", "transfers", "scouting"], emoji: "target", label: "",
     rate_cognition_per_day: 110, training_score: 720, rating: 4.4, rating_count: 238, is_seeded: true,
     sample_qa: [
       { q: "Does the Osimhen-to-United rumor make sense?", a: "Not in a back-three build. His runs need a partner occupying the pivot — United's system isolates the 9. It's an agent-driven story; the profile they've actually scouted three times this season is a different archetype." },

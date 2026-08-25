@@ -50,13 +50,14 @@ button { font-family: inherit; }
 }
 .wordmark {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   font-weight: 800;
   font-size: 1.15rem;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
+.wordmark-icon { color: var(--accent); flex-shrink: 0; }
 .wordmark .beta {
   font-family: var(--font-space-mono), monospace;
   font-size: 0.58rem;
@@ -144,8 +145,8 @@ button { font-family: inherit; }
   width: 46px; height: 46px;
   border-radius: 12px;
   background: var(--brand-soft);
+  color: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem;
   flex-shrink: 0;
 }
 .mind-card h3 { margin: 0; font-size: 1.08rem; font-weight: 800; }
@@ -175,7 +176,7 @@ button { font-family: inherit; }
   font-family: var(--font-space-mono), monospace;
   font-weight: 700; font-size: 0.85rem; color: var(--brand);
 }
-.stars { color: var(--accent-deep); font-size: 0.85rem; letter-spacing: 1px; }
+.stars { color: var(--accent-deep); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 1px; }
 
 /* ── sections ── */
 section.page { padding: 36px 0 72px; }
