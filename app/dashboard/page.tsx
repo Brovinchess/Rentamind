@@ -76,7 +76,7 @@ export default async function Dashboard() {
           <thead>
             <tr>
               <th>Mind</th><th>Status</th><th>Training Score</th><th>Cognition balance</th>
-              <th>Burn · 30d</th><th>Circle</th><th>Listing</th>
+              <th>Burn · 30d</th><th>Circle</th><th>Listing</th><th>Chat</th>
             </tr>
           </thead>
           <tbody>
@@ -99,11 +99,16 @@ export default async function Dashboard() {
                       <span style={{ color: "var(--muted)" }}>not listed</span>
                     )}
                   </td>
+                  <td>
+                    <Link href={`/talk/${m.mindId}`} className="btn btn-outline btn-sm">
+                      Talk
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {!mindRows.length && !liveError ? (
-              <tr><td colSpan={7} className="empty">Loading live Minds…</td></tr>
+              <tr><td colSpan={8} className="empty">Loading live Minds…</td></tr>
             ) : null}
           </tbody>
         </table>

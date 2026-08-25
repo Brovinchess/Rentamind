@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 type Msg = { fingerprint?: string; text: string; fromMind: boolean; pending?: boolean };
 
-export default function ChatBox({ listingId }: { listingId: string }) {
+export default function ChatBox({ listingId, mindId }: { listingId?: string; mindId?: string }) {
+  const targetQuery = listingId ? `listingId=${listingId}` : `mindId=${mindId}`;
+  const targetBody = listingId ? { listingId } : { mindId };
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -14,7 +16,7 @@ export default function ChatBox({ listingId }: { listingId: string }) {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/chat?listingId=${listingId}`)
+    fetch(`/api/chat?${targetQuery}`)
       .then((r) => r.json())
       .then((d) => {
         if (!alive) return;
@@ -26,7 +28,8 @@ export default function ChatBox({ listingId }: { listingId: string }) {
     return () => {
       alive = false;
     };
-  }, [listingId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId, mindId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -43,7 +46,7 @@ export default function ChatBox({ listingId }: { listingId: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId, text }),
+        body: JSON.stringify({ ...targetBody, text }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "send failed");
