@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
-import MindIcon from "@/components/MindIcon";
+import MindAvatar from "@/components/MindAvatar";
 import { getLiveMindStats, listMindsCached, trainingScore } from "@/lib/minds";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function TalkPage({ params }: { params: Promise<{ mindId: s
         ← Back to My Minds
       </Link>
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0 4px", flexWrap: "wrap" }}>
-        <div className="avatar"><MindIcon hint="brain" size={26} /></div>
+        <MindAvatar seed={mind.name ?? mindId} size={52} radius={14} />
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>@{mind.name}</h2>
           <span className="mono" style={{ fontSize: "0.72rem", color: "var(--muted)" }}>

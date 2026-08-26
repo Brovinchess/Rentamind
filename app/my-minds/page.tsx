@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { after } from "next/server";
 import ListMindForm from "@/components/ListMindForm";
+import MindAvatar from "@/components/MindAvatar";
 import ManageListings from "@/components/ManageListings";
 import SettleButton from "@/components/SettleButton";
 import { settleIfStale } from "@/lib/points";
@@ -87,7 +88,7 @@ export default async function Dashboard() {
               const listing = myListings.find((l) => l.mind_id === m.mindId && l.is_active);
               return (
                 <tr key={m.mindId}>
-                  <td><b>@{m.name}</b></td>
+                  <td><span style={{ display: "flex", alignItems: "center", gap: 8 }}><MindAvatar seed={m.name} size={26} radius={7} /><b>@{m.name}</b></span></td>
                   <td>{m.isEnabled ? <span className="pill pill-live">online</span> : <span className="pill pill-demo">paused</span>}</td>
                   <td className="mono">{m.score}</td>
                   <td>{m.balance != null ? Math.round(m.balance).toLocaleString() : "—"}</td>

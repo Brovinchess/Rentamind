@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
+import MindAvatar from "@/components/MindAvatar";
 
 type MindOpt = { mindId: string; name: string };
 type LogRow = { id: string; topic: string; reply: string | null; sent_at: string };
@@ -97,7 +98,7 @@ export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans
       {plans.map((p) => (
         <div className="card" key={p.id} style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <BookOpen size={18} style={{ color: "var(--brand)" }} aria-hidden />
+            <MindAvatar seed={p.personaName} size={40} radius={10} />
             <b style={{ fontSize: "1.05rem" }}>{p.personaName}</b>
             <span className="mono" style={{ fontSize: "0.72rem", color: "var(--muted)" }}>@{p.mindName}</span>
             <span className="pill pill-cat">{p.archetype}</span>

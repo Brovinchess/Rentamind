@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
-import MindIcon from "@/components/MindIcon";
+import MindAvatar from "@/components/MindAvatar";
 import type { Listing } from "@/lib/types";
 
 export function Stars({ rating, count }: { rating: number; count?: number }) {
@@ -35,7 +35,7 @@ export default function MindCard({ listing, score }: { listing: Listing; score?:
   return (
     <Link href={`/mind/${listing.id}`} className="card mind-card">
       <div className="top">
-        <div className="avatar"><MindIcon hint={listing.emoji} size={24} /></div>
+        <MindAvatar seed={listing.title} size={46} radius={12} />
         <div>
           <h3>{listing.title}</h3>
           <span className="handle">@{listing.mind_name} · by {listing.steward_name}</span>
