@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { after } from "next/server";
 import ListMindForm from "@/components/ListMindForm";
+import ManageListings from "@/components/ManageListings";
 import SettleButton from "@/components/SettleButton";
 import { settleIfStale } from "@/lib/points";
-import { getListings, getPointsEvents, getRentalsForListing } from "@/lib/db";
+import { getListingsForSteward, getPointsEvents, getRentalsForListing } from "@/lib/db";
 import { getLiveMindStats, listMindsCached, STEWARD_EMAIL, trainingScore } from "@/lib/minds";
 import type { Rental } from "@/lib/types";
 
@@ -44,9 +45,8 @@ export default async function Dashboard() {
     liveError = e instanceof Error ? e.message : String(e);
   }
 
-  const listings = await getListings().catch(() => []);
-  const myListings = listings.filter((l) => l.steward_email === STEWARD_EMAIL);
-  const listedMindIds = new Set(listings.map((l) => l.mind_id));
+  const myListings = await getListingsForSteward(STEWARD_EMAIL).catch(() => []);
+  const listedMindIds = new Set(myListings.map((l) => l.mind_id));
   const unlisted = mindRows.filter((m) => !listedMindIds.has(m.mindId));
 
   const rentalsByListing = new Map<string, Rental[]>();
@@ -84,7 +84,7 @@ export default async function Dashboard() {
           </thead>
           <tbody>
             {mindRows.map((m) => {
-              const listing = listings.find((l) => l.mind_id === m.mindId);
+              const listing = myListings.find((l) => l.mind_id === m.mindId && l.is_active);
               return (
                 <tr key={m.mindId}>
                   <td><b>@{m.name}</b></td>
@@ -123,6 +123,31 @@ export default async function Dashboard() {
           Launch a new Mind
         </Link>
       </div>
+
+      {myListings.length ? (
+        <>
+          <h3 style={{ marginTop: 38 }}>Your listings</h3>
+          <div style={{ marginTop: 10 }}>
+            <ManageListings
+              listings={myListings.map((l) => ({
+                id: l.id,
+                title: l.title,
+                mind_name: l.mind_name,
+                tagline: l.tagline,
+                description: l.description,
+                category: l.category,
+                emoji: l.emoji,
+                label: l.label,
+                rate_cognition_per_day: Number(l.rate_cognition_per_day),
+                min_days: l.min_days,
+                max_concurrent: l.max_concurrent,
+                is_active: l.is_active,
+                activeRentals: (rentalsByListing.get(l.id) ?? []).filter((r) => r.status === "active").length,
+              }))}
+            />
+          </div>
+        </>
+      ) : null}
 
       <h3 style={{ marginTop: 38 }}>Rentals on your listings</h3>
       <div className="table-wrap" style={{ marginTop: 10 }}>

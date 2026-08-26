@@ -40,11 +40,15 @@ rentamind.vercel.app runs on Rovin's Builder key server-side, and every route is
 
 ### Medium
 
-**M1. Settlement is manual.** Expiry + metering only run when "Settle rentals" is clicked. Until it runs, expired renters keep Circle access. Fix: Vercel cron hitting `/api/settle` every 5 minutes (one config file).
+**M1. Settlement is manual.** — ✅ **FIXED**: daily Vercel cron (`vercel.json`, CRON_SECRET-authenticated) + throttled background settle via `after()` on dashboard/points visits.
+
+**(original finding)**  Expiry + metering only run when "Settle rentals" is clicked. Until it runs, expired renters keep Circle access. Fix: Vercel cron hitting `/api/settle` every 5 minutes (one config file).
 
 **M2. No rating submission.** `ram_ratings` table exists but no UI writes to it — listings stay "unrated" forever and the concept's quality multiplier has no input.
 
-**M3. No delist/edit.** Stewards can list a Mind but never unlist, reprice, or edit it (this cleanup had to be done directly in the DB). The listing form also can't set sample Q&A, tags, min days, or max concurrent renters — all fields the concept's listing journey names.
+**M3. No delist/edit.** — ✅ **FIXED**: "Your listings" section on the dashboard with inline edit (title, tagline, description, category, icon, rate, min days, max renters), delist (keeps history; mid-window renters retain access until expiry), and relist.
+
+**(original finding)**  Stewards can list a Mind but never unlist, reprice, or edit it (this cleanup had to be done directly in the DB). The listing form also can't set sample Q&A, tags, min days, or max concurrent renters — all fields the concept's listing journey names.
 
 ### Low / polish
 

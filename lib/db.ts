@@ -35,6 +35,23 @@ export async function createListing(row: Partial<Listing>): Promise<Listing> {
   return data as Listing;
 }
 
+export async function updateListing(id: string, patch: Partial<Listing>): Promise<Listing> {
+  const { data, error } = await db().from("ram_listings").update(patch).eq("id", id).select().single();
+  if (error) throw new Error(`update listing: ${error.message}`);
+  return data as Listing;
+}
+
+/** All of a steward's listings, active and delisted, newest first. */
+export async function getListingsForSteward(email: string): Promise<Listing[]> {
+  const { data, error } = await db()
+    .from("ram_listings")
+    .select("*")
+    .eq("steward_email", email)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`steward listings: ${error.message}`);
+  return (data ?? []) as Listing[];
+}
+
 export async function getRentalsForListing(listingId: string, status?: string): Promise<Rental[]> {
   let q = db().from("ram_rentals").select("*").eq("listing_id", listingId);
   if (status) q = q.eq("status", status);
