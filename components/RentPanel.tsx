@@ -77,9 +77,13 @@ export default function RentPanel({
         <p style={{ margin: 0, fontSize: "0.9rem" }}>
           <b>+{result.points.renter} Synapses</b> for you · +{result.points.steward} for the steward.
         </p>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.8rem" }}>
+          The chat button below is your rental link — bookmark it, it unlocks the chat for the whole
+          rental window.
+        </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {result.circleAdded ? (
-            <Link className="btn btn-primary btn-sm" href={`/chat/${listingId}?renter=${encodeURIComponent(email)}`}>
+            <Link className="btn btn-primary btn-sm" href={`/chat/${listingId}?rental=${result.rentalId}`}>
               Chat with it now
             </Link>
           ) : null}

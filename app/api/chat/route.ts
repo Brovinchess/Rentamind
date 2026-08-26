@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getListing } from "@/lib/db";
+import { getListing, getRental } from "@/lib/db";
 import { listMindsCached, minds } from "@/lib/minds";
 
 export const maxDuration = 180;
@@ -23,26 +23,52 @@ function toPlainText(html: string): string {
     .trim();
 }
 
-/** Resolve a target mindId from either a listingId or a steward-owned mindId. */
-async function resolveMindId(listingId: string | null, mindId: string | null): Promise<string | null> {
+/**
+ * Resolve a target mindId. Two allowed paths (QA finding C2):
+ * - steward: a mindId owned by the account's Builder key
+ * - renter: a listingId plus the rentalId issued at checkout, which must be an
+ *   active, unexpired rental of that listing
+ */
+async function resolveMindId(
+  listingId: string | null,
+  mindId: string | null,
+  rentalId: string | null,
+): Promise<{ mindId: string } | { error: string; status: number }> {
   if (mindId) {
     const owned = await listMindsCached();
-    return owned.some((m) => m.mindId === mindId) ? mindId : null;
+    return owned.some((m) => m.mindId === mindId)
+      ? { mindId }
+      : { error: "Not a live Mind on this account", status: 404 };
   }
   if (listingId) {
     const listing = await getListing(listingId);
-    return listing?.mind_id ?? null;
+    if (!listing?.mind_id) return { error: "Not a live Mind", status: 404 };
+    if (!rentalId) return { error: "An active rental is required to chat with this Mind", status: 403 };
+    const rental = await getRental(rentalId).catch(() => null);
+    if (!rental || rental.listing_id !== listingId) {
+      return { error: "Rental not found for this listing", status: 403 };
+    }
+    if (rental.status !== "active" || new Date(rental.ends_at) <= new Date()) {
+      return { error: "This rental has ended — rent the Mind again to keep chatting", status: 403 };
+    }
+    return { mindId: listing.mind_id };
   }
-  return null;
+  return { error: "listingId or mindId required", status: 400 };
 }
 
 /** GET /api/chat?listingId=… or ?mindId=… — recent transcript */
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const target = await resolveMindId(url.searchParams.get("listingId"), url.searchParams.get("mindId"));
-    if (!target) return NextResponse.json({ error: "Not a live Mind on this account" }, { status: 404 });
-
+    const resolved = await resolveMindId(
+      url.searchParams.get("listingId"),
+      url.searchParams.get("mindId"),
+      url.searchParams.get("rentalId"),
+    );
+    if ("error" in resolved) {
+      return NextResponse.json({ error: resolved.error }, { status: resolved.status });
+    }
+    const target = resolved.mindId;
     const alias = aliasFor(target);
     const c = minds();
     await c.ensureConversation(alias, target);
@@ -65,18 +91,15 @@ export async function GET(req: Request) {
 /** POST /api/chat {listingId | mindId, text} — send and wait for the Mind's reply */
 export async function POST(req: Request) {
   try {
-    const { listingId, mindId, text } = await req.json();
+    const { listingId, mindId, rentalId, text } = await req.json();
     if ((!listingId && !mindId) || !text?.trim()) {
       return NextResponse.json({ error: "listingId or mindId, and text, required" }, { status: 400 });
     }
-    const target = await resolveMindId(listingId ?? null, mindId ?? null);
-    if (!target) {
-      return NextResponse.json(
-        { error: "Seeded demo Minds don't have a live brain to chat with — try a Live listing." },
-        { status: 400 },
-      );
+    const resolved = await resolveMindId(listingId ?? null, mindId ?? null, rentalId ?? null);
+    if ("error" in resolved) {
+      return NextResponse.json({ error: resolved.error }, { status: resolved.status });
     }
-
+    const target = resolved.mindId;
     const alias = aliasFor(target);
     const c = minds();
     await c.ensureConversation(alias, target);

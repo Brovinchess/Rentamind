@@ -22,11 +22,11 @@ Full pass over user journeys and UX, front end to back end, checked against [CON
 
 ### Critical
 
-**C1. The deployed app has no authentication at all.**
+**C1. The deployed app has no authentication at all.** — ✅ **FIXED** same day: access-code gate in `proxy.ts` (cookie-based, `APP_ACCESS_CODE` env; pages redirect to `/gate`, APIs return 401).
 rentamind.vercel.app runs on Rovin's Builder key server-side, and every route is public. Anyone with the URL can: see the dashboard (Mind names, balances, burn), open any training room and chat *as the steward's account* — burning real cognition — create listings, and add arbitrary emails to real Minds' Circles via `/api/rent`. The concept doc specifies steward Builder-key login and renter identity; neither is enforced.
 *Recommendation:* short-term, gate the whole app behind an access code (env var + middleware) so it stays pitch-shareable but not abusable; longer-term, real steward auth (paste-your-own Builder key session) and renter magic-link.
 
-**C2. Chat access isn't tied to a rental.**
+**C2. Chat access isn't tied to a rental.** — ✅ **FIXED** same day: chat page and API now require the rental id issued at checkout (active, unexpired, matching the listing); non-renters see a "rent to unlock" panel.
 `/chat/[listingId]` works for anyone on any listed Mind with no check for an active rental — the concept's core loop is "pay → Circle grant → chat." In-app chat also runs through the steward's session rather than the renter's identity, so unrented visitors can consume cognition for free.
 *Recommendation:* require an active rental (renter email + rental id token issued at checkout) before serving `/chat`; label in-app chat as a preview surface and keep email/Telegram (which the Circle genuinely gates) as the canonical renter channel.
 

@@ -9,14 +9,18 @@ const POLL_MS = 8_000;
 export default function ChatBox({
   listingId,
   mindId,
+  rentalId,
   starters,
 }: {
   listingId?: string;
   mindId?: string;
+  rentalId?: string;
   starters?: { label: string; text: string }[];
 }) {
-  const targetQuery = listingId ? `listingId=${listingId}` : `mindId=${mindId}`;
-  const targetBody = listingId ? { listingId } : { mindId };
+  const targetQuery = listingId
+    ? `listingId=${listingId}${rentalId ? `&rentalId=${rentalId}` : ""}`
+    : `mindId=${mindId}`;
+  const targetBody = listingId ? { listingId, rentalId } : { mindId };
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);

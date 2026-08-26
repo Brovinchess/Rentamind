@@ -2,46 +2,75 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
 import MindIcon from "@/components/MindIcon";
-import { getListing } from "@/lib/db";
+import { getListing, getRental } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ listingId: string }>;
+  searchParams: Promise<{ rental?: string }>;
 }) {
   const { listingId } = await params;
+  const { rental: rentalId } = await searchParams;
   const listing = await getListing(listingId).catch(() => null);
   if (!listing) notFound();
+
+  // Rental gate: chat requires the rental token issued at checkout,
+  // for an active, unexpired rental of this listing.
+  const rental = rentalId ? await getRental(rentalId).catch(() => null) : null;
+  const rentalValid =
+    !!rental &&
+    rental.listing_id === listing.id &&
+    rental.status === "active" &&
+    new Date(rental.ends_at) > new Date();
 
   return (
     <main className="container page narrow">
       <Link href={`/mind/${listing.id}`} style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
         ← Back to {listing.title}
       </Link>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0 4px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0 4px", flexWrap: "wrap" }}>
         <div className="avatar"><MindIcon hint={listing.emoji} size={26} /></div>
-        <div>
+        <div style={{ flex: 1 }}>
           <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>{listing.title}</h2>
           <span className="mono" style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
             @{listing.mind_name} · live Mind chat via HelloMinds
           </span>
         </div>
+        {rentalValid ? (
+          <span className="pill pill-live">
+            rented until {new Date(rental.ends_at).toLocaleDateString()}
+          </span>
+        ) : null}
       </div>
-      {listing.mind_id ? (
-        <ChatBox listingId={listing.id} />
+
+      {!listing.mind_id ? (
+        <div className="notice">This listing has no live Mind attached.</div>
+      ) : rentalValid ? (
+        <>
+          <ChatBox listingId={listing.id} rentalId={rental.id} />
+          <p style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+            Renting as <b>{rental.renter_email}</b> — you can also email this Mind directly from
+            that address, or message it on Telegram. Replies can take a couple of minutes; it&apos;s
+            reasoning and burning real cognition.
+          </p>
+        </>
       ) : (
-        <div className="notice">
-          This is a seeded demo Mind without a live brain. Rent one of the <b>Live</b> listings to
-          chat for real.
+        <div className="card" style={{ display: "grid", gap: 10, marginTop: 14 }}>
+          <b>This chat is for renters.</b>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
+            {rentalId
+              ? "This rental link has expired or isn't valid for this Mind. Rent it again to keep chatting."
+              : "Rent this Mind to unlock its chat — your rental link opens this room for the whole rental window."}
+          </p>
+          <Link href={`/mind/${listing.id}`} className="btn btn-primary" style={{ justifySelf: "start" }}>
+            Rent {listing.title}
+          </Link>
         </div>
       )}
-      <p style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
-        Replies come from the actual Mind on HelloMinds and can take up to a couple of minutes —
-        it&apos;s reasoning, running tools, and burning real cognition. In production renters also chat
-        by emailing the Mind directly or via its Telegram bot.
-      </p>
     </main>
   );
 }
