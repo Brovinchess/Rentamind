@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Space_Mono } from "next/font/google";
 import Link from "next/link";
 import { Brain } from "lucide-react";
+import MindAvatar from "@/components/MindAvatar";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
@@ -31,6 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
             <Link href="/launch" className="header-cta">
               Launch a Mind
+            </Link>
+            <Link href="/profile" className="header-profile" title="Profile" aria-label="Profile">
+              <MindAvatar seed="rovin@anichess.com" size={34} radius={17} />
             </Link>
           </div>
         </header>

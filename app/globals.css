@@ -337,3 +337,6 @@ td { font-variant-numeric: tabular-nums; }
 .earn-k { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 .earn-v { font-weight: 800; font-size: 1.5rem; margin-top: 4px; }
 .earn-v small { font-size: 0.72rem; font-weight: 600; color: #c3cdea; }
+
+.header-profile { display: inline-flex; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); transition: border-color 0.15s; }
+.header-profile:hover { border-color: var(--accent); }
