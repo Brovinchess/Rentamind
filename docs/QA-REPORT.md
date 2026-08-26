@@ -81,3 +81,28 @@ rentamind.vercel.app runs on Rovin's Builder key server-side, and every route is
 4. **M3** delist/edit listing (hours).
 5. **M2** ratings (hours).
 6. **H1/H3/L3** — the partner-key conversation with HelloMinds unlocks all three.
+
+---
+
+## QA pass 2 — 2026-08-26 (Builder-key auth + multi-trainer)
+
+All tests run against the refactored architecture (per-user Builder keys, proxied rentals, per-message billing):
+
+| # | Test | Result |
+|---|---|---|
+| A1 | Renting your own listing | ✅ blocked ("chat with it free in its training room") |
+| A2 | Second account rents a listing | ✅ rental + 1,000-cognition wallet + points |
+| A3 | Renter reads own session | ✅ balance/price/usage returned |
+| A4 | Other account opens someone's rental | ✅ 403 cross-account block |
+| A5 | Bogus rental id | ✅ 403 |
+| A6/A7 | Editing/delisting someone else's listing | ✅ 404 ownership block |
+| A8 | Prompt-injection message from renter | ✅ 400 filtered |
+| A9 | Sign out | ✅ session cleared, redirect to login |
+| B1 | Paid renter message via owner-key proxy | ✅ charged 10 (1000→990), in-persona Hulk reply |
+| B2 | Cron route with CRON_SECRET | ✅ 200, gate bypassed only with secret |
+| B3 | All 8 pages render signed-in | ✅ 200 |
+| — | Invalid Builder key login | ✅ 400 with clear message |
+| — | Real key login (local + production) | ✅ validates against live API, 18 minds |
+| — | Anonymous access rules (local + production) | ✅ browse open, act redirects/401 |
+
+Residual production items: custom SMTP no longer needed (no email auth); remaining launch list = daily message caps per rental, terms/privacy page, error tracking, per-listing rate limits.
