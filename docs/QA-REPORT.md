@@ -1,0 +1,79 @@
+# Rent a Mind — QA Report (2026-08-25)
+
+Full pass over user journeys and UX, front end to back end, checked against [CONCEPT.md](CONCEPT.md). State at time of review: marketplace intentionally empty (no steward has listed a Mind yet), 1 ended rental in history, 4 real points events.
+
+## What was tested and passes
+
+| Area | Result |
+|---|---|
+| Marketplace empty state | ✅ "No Minds listed in this category yet" renders; no crash with zero listings |
+| Listing creation (`POST /api/listings`) | ✅ Creates for owned Minds; appears on marketplace immediately |
+| Ownership guard | ✅ Listing a Mind not on the account → 403 |
+| Duplicate guard | ✅ Listing an already-listed Mind → 409 |
+| Rent validation | ✅ Inactive listing → 404; malformed email → 400; capacity cap enforced |
+| Real Circle grant/revoke | ✅ Verified live: rental added renter to itachi's Circle; cleanup deactivated them (Builder API confirmed both) |
+| Live chat | ✅ Real replies from the Mind; HTML flattened; history ordered; 8s background sync; timeout recovers via sync |
+| Chat ownership guard | ✅ Foreign mindId → 404 on API and `/talk` page |
+| Settlement | ✅ Metered real cognition into points during the live rental; idle run returns zeros; expiry removes Circle access |
+| Points ledger | ✅ Only real events remain (rental supply 70+2, renter bonus 10, usage 3) |
+| Type safety / build | ✅ `tsc` clean; production deploy healthy |
+
+## Findings — ranked
+
+### Critical
+
+**C1. The deployed app has no authentication at all.**
+rentamind.vercel.app runs on Rovin's Builder key server-side, and every route is public. Anyone with the URL can: see the dashboard (Mind names, balances, burn), open any training room and chat *as the steward's account* — burning real cognition — create listings, and add arbitrary emails to real Minds' Circles via `/api/rent`. The concept doc specifies steward Builder-key login and renter identity; neither is enforced.
+*Recommendation:* short-term, gate the whole app behind an access code (env var + middleware) so it stays pitch-shareable but not abusable; longer-term, real steward auth (paste-your-own Builder key session) and renter magic-link.
+
+**C2. Chat access isn't tied to a rental.**
+`/chat/[listingId]` works for anyone on any listed Mind with no check for an active rental — the concept's core loop is "pay → Circle grant → chat." In-app chat also runs through the steward's session rather than the renter's identity, so unrented visitors can consume cognition for free.
+*Recommendation:* require an active rental (renter email + rental id token issued at checkout) before serving `/chat`; label in-app chat as a preview surface and keep email/Telegram (which the Circle genuinely gates) as the canonical renter channel.
+
+### High
+
+**H1. Renter-funded cognition is simulated.** The checkout is display-only; no Stripe, no top-up. This is the concept's day-one revenue mechanic. Blocked on a partner API key (`POST /v1/ui/minds/{id}/top-up` exists and returns a real Stripe Checkout URL, test mode included).
+
+**H2. No sybil defenses.** A steward can rent their own Mind with a second email and farm Synapses; the concept promises self-rental decay to zero, payment-anchored points, and rating-gated multipliers. None are implemented.
+
+**H3. Usage over-attribution.** `renter_usage` points equal the Mind's *total* cognition burn during the rental window — including the steward's own training messages and the Mind's autonomous cycles. Renters can be credited for burn they didn't cause. Mind-level metering is an API limitation; partial fix: subtract a trailing baseline burn rate; real fix: per-conversation metering (native ask).
+
+### Medium
+
+**M1. Settlement is manual.** Expiry + metering only run when "Settle rentals" is clicked. Until it runs, expired renters keep Circle access. Fix: Vercel cron hitting `/api/settle` every 5 minutes (one config file).
+
+**M2. No rating submission.** `ram_ratings` table exists but no UI writes to it — listings stay "unrated" forever and the concept's quality multiplier has no input.
+
+**M3. No delist/edit.** Stewards can list a Mind but never unlist, reprice, or edit it (this cleanup had to be done directly in the DB). The listing form also can't set sample Q&A, tags, min days, or max concurrent renters — all fields the concept's listing journey names.
+
+### Low / polish
+
+**L1.** Marketplace sorts by the DB `training_score` column, which is 0 for real listings — display score is computed live but ordering ignores it.
+**L2.** Performance: dashboard fires ~4 live Builder-API calls per Mind per load (~56 requests for 14 Minds); homepage similar per listing. Needs short-TTL server caching.
+**L3.** Awakening can't happen in-app (partner API gap) — the launch flow's hand-off + auto-detect is the right workaround and is documented in the UI.
+**L4.** Empty marketplace shows no CTA to launch/list a Mind — dead end for a first-time visitor.
+**L5.** Renter email is unverified (anyone can type any address — which, combined with C1, lets a stranger add any email to a Circle).
+**L6.** Sample Q&A on listings (when they existed) were authored copy, not actual Mind outputs; the form offers no way to generate real ones.
+
+## Concept-doc alignment summary
+
+| Concept promise | Status |
+|---|---|
+| Rental = time-boxed Circle grant | ✅ Real |
+| Rentals settle in Cognition (renter tops up the Mind) | ❌ Simulated (partner key needed) |
+| Renter chats on native surfaces (email/Telegram) | ✅ Real once in Circle |
+| In-app chat | ⚠️ Real pipeline, but not rental-gated (C2) |
+| Points: training / supply / renter usage | ⚠️ Supply + usage flow works; training-activity points not implemented; anti-sybil absent (H2) |
+| Scheduler expires rentals | ⚠️ Logic exists, manual trigger only (M1) |
+| Ratings feed reputation | ❌ No input path (M2) |
+| Steward auth via Builder key, renter identity | ❌ Not enforced (C1) |
+| Launch → Train → List → Earn journey | ✅ All pages exist and connect |
+
+## Suggested order of work
+
+1. **C1** access gate (hours) — makes the public URL safe.
+2. **C2** rental-gated chat (hours).
+3. **M1** settlement cron (minutes).
+4. **M3** delist/edit listing (hours).
+5. **M2** ratings (hours).
+6. **H1/H3/L3** — the partner-key conversation with HelloMinds unlocks all three.
