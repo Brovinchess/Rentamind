@@ -73,3 +73,18 @@ alter table ram_listings enable row level security;
 alter table ram_rentals enable row level security;
 alter table ram_points_events enable row level security;
 alter table ram_ratings enable row level security;
+
+-- v2: proxied rental sessions + renter cognition wallets
+create table if not exists ram_wallets (
+  email text primary key,
+  cognition numeric not null default 1000,   -- Season 0 free starting balance
+  created_at timestamptz not null default now()
+);
+alter table ram_wallets enable row level security;
+
+alter table ram_rentals add column if not exists conversation_alias text;
+alter table ram_rentals add column if not exists messages_used int not null default 0;
+alter table ram_rentals add column if not exists cognition_spent numeric not null default 0;
+
+alter table ram_listings add column if not exists price_per_message numeric not null default 10;
+alter table ram_listings add column if not exists service_dna_sent_at timestamptz;

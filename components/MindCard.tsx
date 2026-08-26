@@ -53,7 +53,7 @@ export default function MindCard({ listing, score }: { listing: Listing; score?:
       </div>
       <div className="foot">
         <span className="price">
-          {Number(listing.rate_cognition_per_day).toLocaleString()} <small>Cognition / day</small>
+          {Number(listing.price_per_message).toLocaleString()} <small>Cognition / message</small>
         </span>
         <span className="btn btn-primary btn-sm">Rent</span>
       </div>

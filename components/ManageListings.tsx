@@ -16,7 +16,7 @@ export type ManagedListing = {
   category: string;
   emoji: string;
   label: string;
-  rate_cognition_per_day: number;
+  price_per_message: number;
   min_days: number;
   max_concurrent: number;
   is_active: boolean;
@@ -59,7 +59,7 @@ export default function ManageListings({ listings }: { listings: ManagedListing[
         <table>
           <thead>
             <tr>
-              <th>Listing</th><th>Status</th><th>Rate / day</th><th>Min days</th>
+              <th>Listing</th><th>Status</th><th>Price / message</th><th>Min days</th>
               <th>Slots</th><th>Active rentals</th><th style={{ textAlign: "right" }}>Manage</th>
             </tr>
           </thead>
@@ -77,7 +77,7 @@ export default function ManageListings({ listings }: { listings: ManagedListing[
                     ? <span className="pill pill-live">listed</span>
                     : <span className="pill pill-demo">delisted</span>}
                 </td>
-                <td>{Number(l.rate_cognition_per_day).toLocaleString()}</td>
+                <td>{Number(l.price_per_message).toLocaleString()}</td>
                 <td>{l.min_days}</td>
                 <td>{l.max_concurrent}</td>
                 <td>{l.activeRentals}</td>
@@ -145,9 +145,9 @@ export default function ManageListings({ listings }: { listings: ManagedListing[
               </select>
             </div>
             <div className="field">
-              <label htmlFor="el-rate">Cognition / day</label>
-              <input id="el-rate" type="number" min={10} value={form.rate_cognition_per_day ?? 100}
-                onChange={(e) => setForm({ ...form, rate_cognition_per_day: Number(e.target.value) })} />
+              <label htmlFor="el-rate">Cognition / message</label>
+              <input id="el-rate" type="number" min={1} value={form.price_per_message ?? 10}
+                onChange={(e) => setForm({ ...form, price_per_message: Number(e.target.value) })} />
             </div>
             <div className="field">
               <label htmlFor="el-min">Min days</label>
@@ -174,7 +174,7 @@ export default function ManageListings({ listings }: { listings: ManagedListing[
                     description: form.description,
                     category: form.category,
                     emoji: form.emoji,
-                    rate_cognition_per_day: form.rate_cognition_per_day,
+                    price_per_message: form.price_per_message,
                     min_days: form.min_days,
                     max_concurrent: form.max_concurrent,
                   },

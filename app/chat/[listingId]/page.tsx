@@ -53,9 +53,9 @@ export default async function ChatPage({
         <>
           <ChatBox listingId={listing.id} rentalId={rental.id} />
           <p style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
-            Renting as <b>{rental.renter_email}</b> — you can also email this Mind directly from
-            that address, or message it on Telegram. Replies can take a couple of minutes; it&apos;s
-            reasoning and burning real cognition.
+            Renting as <b>{rental.renter_email}</b>. Pick a mode — <b>Ask</b> a question,
+            <b> Draft</b> content in its voice, or <b>Predict</b> what the persona would do.
+            Replies can take a minute or two; it&apos;s reasoning with real cognition.
           </p>
         </>
       ) : (

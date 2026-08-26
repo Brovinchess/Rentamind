@@ -65,7 +65,7 @@ export default async function Dashboard() {
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <h2 className="section-title" style={{ margin: 0 }}>Signed in as {STEWARD_EMAIL}</h2>
         <span className="pill pill-live"><span className="dot" /> Builder API connected</span>
-        <span className="score" style={{ fontSize: "1rem" }}>{myPoints.toLocaleString()} Synapses</span>
+        <span className="score" style={{ fontSize: "1rem" }}>{myPoints.toLocaleString()} Points</span>
         <span style={{ marginLeft: "auto" }}><SettleButton /></span>
       </div>
 
@@ -138,7 +138,7 @@ export default async function Dashboard() {
                 category: l.category,
                 emoji: l.emoji,
                 label: l.label,
-                rate_cognition_per_day: Number(l.rate_cognition_per_day),
+                price_per_message: Number(l.price_per_message),
                 min_days: l.min_days,
                 max_concurrent: l.max_concurrent,
                 is_active: l.is_active,

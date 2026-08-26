@@ -22,6 +22,14 @@ export type Listing = {
   rating_count: number;
   is_seeded: boolean;
   is_active: boolean;
+  price_per_message: number;
+  service_dna_sent_at: string | null;
+  created_at: string;
+};
+
+export type Wallet = {
+  email: string;
+  cognition: number;
   created_at: string;
 };
 
@@ -37,6 +45,9 @@ export type Rental = {
   cognition_used: number;
   usage_settled_at: string | null;
   circle_added: boolean;
+  conversation_alias: string | null;
+  messages_used: number;
+  cognition_spent: number;
   created_at: string;
 };
 

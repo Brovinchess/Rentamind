@@ -14,7 +14,7 @@ const STEPS = [
   },
   {
     title: "List it",
-    body: "When it answers like the specialist you imagined, list it on the Mindshelf with a rate. Renters join its Circle, and every rented conversation earns you Synapses.",
+    body: "When it answers like the specialist you imagined, list it on the Mindshelf with a per-message price. Renters get private sessions with it, and every message they pay for earns you points.",
   },
 ];
 

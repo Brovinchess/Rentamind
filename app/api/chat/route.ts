@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { getListing, getRental } from "@/lib/db";
+import { addPoints, getListing, getOrCreateWallet, getRental, spendFromWallet, updateRental } from "@/lib/db";
+import { looksLikeInjection, wrapClientMessage, type TaskMode } from "@/lib/envelope";
 import { listMindsCached, minds } from "@/lib/minds";
+import { POINTS } from "@/lib/points";
+import type { Listing, Rental } from "@/lib/types";
 
 export const maxDuration = 180;
 
-function aliasFor(mindId: string) {
+function stewardAlias(mindId: string) {
   return `ram-${mindId.slice(0, 8)}`;
+}
+function rentalAlias(mindId: string, rentalId: string) {
+  return `ram-${mindId.slice(0, 8)}-${rentalId.slice(0, 8)}`;
 }
 
 /** Mind replies arrive as HTML; flatten to plain text for the chat bubbles. */
@@ -23,22 +29,22 @@ function toPlainText(html: string): string {
     .trim();
 }
 
+type Resolved =
+  | { kind: "steward"; mindId: string; alias: string }
+  | { kind: "renter"; mindId: string; alias: string; rental: Rental; listing: Listing }
+  | { error: string; status: number };
+
 /**
- * Resolve a target mindId. Two allowed paths (QA finding C2):
- * - steward: a mindId owned by the account's Builder key
- * - renter: a listingId plus the rentalId issued at checkout, which must be an
- *   active, unexpired rental of that listing
+ * Steward path: a mindId owned by the account — raw training channel.
+ * Renter path: listingId + the rentalId issued at checkout — proxied service session.
  */
-async function resolveMindId(
-  listingId: string | null,
-  mindId: string | null,
-  rentalId: string | null,
-): Promise<{ mindId: string } | { error: string; status: number }> {
+async function resolve(listingId: string | null, mindId: string | null, rentalId: string | null): Promise<Resolved> {
   if (mindId) {
     const owned = await listMindsCached();
-    return owned.some((m) => m.mindId === mindId)
-      ? { mindId }
-      : { error: "Not a live Mind on this account", status: 404 };
+    if (!owned.some((m) => m.mindId === mindId)) {
+      return { error: "Not a live Mind on this account", status: 404 };
+    }
+    return { kind: "steward", mindId, alias: stewardAlias(mindId) };
   }
   if (listingId) {
     const listing = await getListing(listingId);
@@ -51,36 +57,49 @@ async function resolveMindId(
     if (rental.status !== "active" || new Date(rental.ends_at) <= new Date()) {
       return { error: "This rental has ended — rent the Mind again to keep chatting", status: 403 };
     }
-    return { mindId: listing.mind_id };
+    const alias = rental.conversation_alias ?? rentalAlias(listing.mind_id, rental.id);
+    return { kind: "renter", mindId: listing.mind_id, alias, rental, listing };
   }
   return { error: "listingId or mindId required", status: 400 };
 }
 
-/** GET /api/chat?listingId=… or ?mindId=… — recent transcript */
+/** GET /api/chat?listingId&rentalId or ?mindId — transcript (+ wallet info on rentals). */
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const resolved = await resolveMindId(
+    const r = await resolve(
       url.searchParams.get("listingId"),
       url.searchParams.get("mindId"),
       url.searchParams.get("rentalId"),
     );
-    if ("error" in resolved) {
-      return NextResponse.json({ error: resolved.error }, { status: resolved.status });
-    }
-    const target = resolved.mindId;
-    const alias = aliasFor(target);
+    if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
+
     const c = minds();
-    await c.ensureConversation(alias, target);
-    const rows = await c.getHistory(alias, { limit: 50 });
+    await c.ensureConversation(r.alias, r.mindId);
+    const rows = await c.getHistory(r.alias, { limit: 50 });
     rows.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
+
+    let session = null;
+    if (r.kind === "renter") {
+      const wallet = await getOrCreateWallet(r.rental.renter_email);
+      session = {
+        walletBalance: Number(wallet.cognition),
+        pricePerMessage: Number(r.listing.price_per_message),
+        messagesUsed: r.rental.messages_used,
+        cognitionSpent: Number(r.rental.cognition_spent),
+        endsAt: r.rental.ends_at,
+      };
+    }
+
     return NextResponse.json({
-      alias,
-      messages: rows.map((r) => ({
-        fingerprint: r.fingerprint,
-        text: toPlainText(r.messageText ?? ""),
-        fromMind: r.senderType !== 1,
-        at: r.createdAt,
+      alias: r.alias,
+      session,
+      messages: rows.map((m) => ({
+        fingerprint: m.fingerprint,
+        // Hide the service envelope from the transcript renters see.
+        text: toPlainText(m.messageText ?? "").replace(/^\[RENTAL SESSION[^\]]*\][ \t\r\n]*/, ""),
+        fromMind: m.senderType !== 1,
+        at: m.createdAt,
       })),
     });
   } catch (e) {
@@ -88,36 +107,86 @@ export async function GET(req: Request) {
   }
 }
 
-/** POST /api/chat {listingId | mindId, text} — send and wait for the Mind's reply */
+/** POST /api/chat {listingId+rentalId | mindId, text, task?} — send and wait for the reply. */
 export async function POST(req: Request) {
   try {
-    const { listingId, mindId, rentalId, text } = await req.json();
+    const { listingId, mindId, rentalId, text, task } = await req.json();
     if ((!listingId && !mindId) || !text?.trim()) {
       return NextResponse.json({ error: "listingId or mindId, and text, required" }, { status: 400 });
     }
-    const resolved = await resolveMindId(listingId ?? null, mindId ?? null, rentalId ?? null);
-    if ("error" in resolved) {
-      return NextResponse.json({ error: resolved.error }, { status: resolved.status });
+    const r = await resolve(listingId ?? null, mindId ?? null, rentalId ?? null);
+    if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
+
+    let outgoing = text.trim();
+    let price = 0;
+
+    if (r.kind === "renter") {
+      if (looksLikeInjection(outgoing)) {
+        return NextResponse.json(
+          { error: "That message looks like an attempt to retrain the Mind. Rentals are for asking, drafting, and predicting — training is steward-only." },
+          { status: 400 },
+        );
+      }
+      price = Number(r.listing.price_per_message);
+      const wallet = await getOrCreateWallet(r.rental.renter_email);
+      if (Number(wallet.cognition) < price) {
+        return NextResponse.json(
+          { error: `Not enough cognition — this Mind costs ${price} per message and your balance is ${Math.floor(Number(wallet.cognition))}.` },
+          { status: 402 },
+        );
+      }
+      const mode: TaskMode = ["ask", "draft", "predict"].includes(task) ? task : "ask";
+      outgoing = wrapClientMessage(mode, outgoing);
     }
-    const target = resolved.mindId;
-    const alias = aliasFor(target);
+
     const c = minds();
-    await c.ensureConversation(alias, target);
-    const before = await c.getLatestHistoryFingerprint(alias);
-    await c.sendMessage({ alias, messageText: text.trim() });
+    await c.ensureConversation(r.alias, r.mindId);
+    const before = await c.getLatestHistoryFingerprint(r.alias);
+    await c.sendMessage({ alias: r.alias, messageText: outgoing });
+
+    // Charge + points once the message is actually accepted.
+    let walletBalance: number | null = null;
+    if (r.kind === "renter" && price > 0) {
+      walletBalance = await spendFromWallet(r.rental.renter_email, price);
+      await updateRental(r.rental.id, {
+        messages_used: r.rental.messages_used + 1,
+        cognition_spent: Number(r.rental.cognition_spent) + price,
+      });
+      const renterPts = Math.round(price * POINTS.RENTER_PER_COGNITION);
+      const stewardPts = Math.round(price * POINTS.STEWARD_PER_COGNITION);
+      await addPoints([
+        {
+          subject_email: r.rental.renter_email,
+          role: "renter",
+          event_type: "renter_usage",
+          points: renterPts,
+          meta: { rentalId: r.rental.id, listing: r.listing.title, cognition: price },
+        },
+        {
+          subject_email: r.listing.steward_email,
+          subject_name: r.listing.steward_name,
+          role: "steward",
+          event_type: "rental_supply",
+          points: stewardPts,
+          meta: { rentalId: r.rental.id, listing: r.listing.title, cognition: price },
+        },
+      ]);
+    }
+
     const outcome = await c.waitForReply({
-      alias,
+      alias: r.alias,
       timeoutMs: 150_000,
       afterFingerprint: before,
-      sentMessageText: text.trim(),
+      sentMessageText: outgoing,
     });
 
     if (outcome.timedOut) {
-      return NextResponse.json({ reply: null, timedOut: true });
+      return NextResponse.json({ reply: null, timedOut: true, walletBalance });
     }
     return NextResponse.json({
       reply: toPlainText(outcome.reply.messageText ?? ""),
       timedOut: false,
+      walletBalance,
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "chat error" }, { status: 500 });

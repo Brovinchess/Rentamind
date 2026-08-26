@@ -46,7 +46,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
       <div className="stat-grid">
         <div className="stat"><div className="k">Training Score</div><div className="v">{score}<small> / 1000</small></div></div>
-        <div className="stat"><div className="k">Rate</div><div className="v">{Number(listing.rate_cognition_per_day).toLocaleString()}<small> cog/day</small></div></div>
+        <div className="stat"><div className="k">Price</div><div className="v">{Number(listing.price_per_message).toLocaleString()}<small> cognition / message</small></div></div>
         {stats?.balance != null ? (
           <div className="stat"><div className="k">Live cognition balance</div><div className="v">{Math.round(stats.balance).toLocaleString()}</div></div>
         ) : null}
@@ -89,17 +89,16 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         <RentPanel
           listingId={listing.id}
           title={listing.title}
-          ratePerDay={Number(listing.rate_cognition_per_day)}
+          pricePerMessage={Number(listing.price_per_message)}
           minDays={listing.min_days}
           isLive={!!listing.mind_id}
         />
       )}
 
       <div className="notice" style={{ marginTop: 26 }}>
-        <b>How renting works:</b> your email is added to this Mind&apos;s Circle for the rental
-        window — you talk to the live, trained Mind on web chat{listing.mind_id ? ", email" : " or email"} or
-        Telegram. Heads up: a Mind has one shared memory, so treat conversations as visible to its
-        steward, and your chats become part of its ongoing training.
+        <b>How renting works:</b> you get a private chat session with the live, trained Mind. Each
+        message costs cognition from your balance, and every cognition you spend earns you points.
+        Your session can&apos;t change how the Mind behaves — only its steward can train it.
       </div>
     </main>
   );

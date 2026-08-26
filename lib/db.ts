@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { Listing, PointsEvent, Rental } from "./types";
+import type { Listing, PointsEvent, Rental, Wallet } from "./types";
 
 let _db: SupabaseClient | null = null;
 
@@ -91,6 +91,39 @@ export async function getRental(id: string): Promise<Rental | null> {
   const { data, error } = await db().from("ram_rentals").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`rental: ${error.message}`);
   return (data as Rental) ?? null;
+}
+
+/** Renter wallet: created with the Season 0 free balance on first touch. */
+export async function getOrCreateWallet(email: string): Promise<Wallet> {
+  const lower = email.toLowerCase();
+  const { data } = await db().from("ram_wallets").select("*").eq("email", lower).maybeSingle();
+  if (data) return data as Wallet;
+  const { data: created, error } = await db()
+    .from("ram_wallets")
+    .insert({ email: lower })
+    .select()
+    .single();
+  if (error) {
+    // race: someone else created it — re-read
+    const { data: again } = await db().from("ram_wallets").select("*").eq("email", lower).single();
+    if (again) return again as Wallet;
+    throw new Error(`wallet: ${error.message}`);
+  }
+  return created as Wallet;
+}
+
+/** Deducts from a wallet; returns the new balance or null when funds are insufficient. */
+export async function spendFromWallet(email: string, amount: number): Promise<number | null> {
+  const wallet = await getOrCreateWallet(email);
+  if (Number(wallet.cognition) < amount) return null;
+  const newBalance = Number(wallet.cognition) - amount;
+  const { error } = await db()
+    .from("ram_wallets")
+    .update({ cognition: newBalance })
+    .eq("email", wallet.email)
+    .gte("cognition", amount);
+  if (error) throw new Error(`wallet spend: ${error.message}`);
+  return newBalance;
 }
 
 export async function addPoints(rows: Partial<PointsEvent>[]): Promise<void> {

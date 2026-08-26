@@ -23,17 +23,17 @@ export default async function PointsPage() {
   return (
     <main className="container page narrow">
       <span className="eyebrow section-eyebrow">Season 0</span>
-      <h2 className="section-title">Synapses leaderboard</h2>
+      <h2 className="section-title">Points leaderboard</h2>
       <p style={{ color: "var(--muted)", maxWidth: "62ch" }}>
-        Synapses are burn-backed points: training your Mind, renting it out, and using rented Minds
-        all earn them. They accrue toward a future airdrop. Self-rental loops decay to zero — only
-        real demand climbs this board.
+        Training your Mind, renting it out, and spending cognition on rented Minds all earn points.
+        Points accrue toward a future airdrop. Self-rental loops decay to zero — only real demand
+        climbs this board.
       </p>
 
       <div className="table-wrap" style={{ margin: "18px 0 36px" }}>
         <table>
           <thead>
-            <tr><th>Rank</th><th>Steward / Renter</th><th style={{ textAlign: "right" }}>Synapses</th></tr>
+            <tr><th>Rank</th><th>Steward / Renter</th><th style={{ textAlign: "right" }}>Points</th></tr>
           </thead>
           <tbody>
             {board.map((r) => (
@@ -72,7 +72,7 @@ export default async function PointsPage() {
               </tr>
             ))}
             {recent.filter((e) => e.event_type !== "seed").length === 0 ? (
-              <tr><td colSpan={4} className="empty">No live activity yet — rent a Mind to earn the first Synapses.</td></tr>
+              <tr><td colSpan={4} className="empty">No live activity yet — rent a Mind to earn the first points.</td></tr>
             ) : null}
           </tbody>
         </table>

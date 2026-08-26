@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="nav">
               <Link href="/">Marketplace</Link>
               <Link href="/dashboard">Steward Dashboard</Link>
-              <Link href="/points">Synapses</Link>
+              <Link href="/points">Points</Link>
             </nav>
             <Link href="/launch" className="header-cta">
               Launch a Mind

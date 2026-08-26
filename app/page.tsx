@@ -45,9 +45,9 @@ export default async function Home({
           <span className="eyebrow">A marketplace for trained Minds</span>
           <h1>Someone already trained the Mind you need.</h1>
           <p>
-            Stewards spend months feeding their Minds knowledge, skills, and personality. Rent
-            direct access for a day or a week — it answers you on web chat, email, or Telegram, and
-            every conversation earns Synapses for both sides.
+            Stewards train their Minds into personas and specialists. Rent one and it answers you,
+            drafts in its voice, and predicts what its persona would do — every cognition you spend
+            earns points for both sides.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <a href="#browse" className="btn btn-primary">Browse Minds</a>

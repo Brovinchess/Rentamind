@@ -3,40 +3,36 @@
 import { useState } from "react";
 import Link from "next/link";
 
-type Stage = "form" | "checkout" | "processing" | "done" | "error";
+type Stage = "form" | "processing" | "done" | "error";
 
 type RentResult = {
   rentalId: string;
-  circleAdded: boolean;
-  circleDetail?: string;
-  mindEmail?: string | null;
+  alreadyRenting?: boolean;
+  walletBalance: number;
+  pricePerMessage: number;
   points: { steward: number; renter: number };
 };
 
 export default function RentPanel({
   listingId,
   title,
-  ratePerDay,
+  pricePerMessage,
   minDays,
   isLive,
 }: {
   listingId: string;
   title: string;
-  ratePerDay: number;
+  pricePerMessage: number;
   minDays: number;
   isLive: boolean;
 }) {
   const [stage, setStage] = useState<Stage>("form");
   const [email, setEmail] = useState("");
-  const [days, setDays] = useState(minDays);
+  const [days, setDays] = useState(Math.max(7, minDays));
   const [error, setError] = useState("");
   const [result, setResult] = useState<RentResult | null>(null);
 
-  const cognition = ratePerDay * days;
-  const platformFee = Math.round(cognition * 0.15);
-  const usd = ((cognition + platformFee) / 100).toFixed(2); // demo rate: 100 Cognition ≈ $1
-
-  async function confirm() {
+  async function rent() {
     setStage("processing");
     setError("");
     try {
@@ -58,70 +54,30 @@ export default function RentPanel({
   if (stage === "done" && result) {
     return (
       <div className="card" style={{ borderColor: "var(--good)", display: "grid", gap: 10 }}>
-        <span className="pill pill-live" style={{ justifySelf: "start" }}>Rental active</span>
-        <h3 style={{ margin: 0 }}>You&apos;ve rented {title} for {days} day{days > 1 ? "s" : ""}.</h3>
-        {result.circleAdded ? (
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
-            <b>{email}</b> was really added to this Mind&apos;s Circle on HelloMinds
-            {result.mindEmail ? (
-              <> — you can now email it directly at <b>{result.mindEmail}</b></>
-            ) : null}
-            . It will hear you until the rental expires.
-          </p>
-        ) : (
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
-            This is a seeded demo Mind, so no real Circle change was made — on a live listing your
-            email joins the Mind&apos;s Circle for the rental window.
-          </p>
-        )}
-        <p style={{ margin: 0, fontSize: "0.9rem" }}>
-          <b>+{result.points.renter} Synapses</b> for you · +{result.points.steward} for the steward.
+        <span className="pill pill-live" style={{ justifySelf: "start" }}>
+          {result.alreadyRenting ? "Already renting" : "Rental started"}
+        </span>
+        <h3 style={{ margin: 0 }}>
+          {result.alreadyRenting ? `You're already renting ${title}.` : `You're renting ${title}.`}
+        </h3>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
+          Your cognition balance: <b>{Math.floor(result.walletBalance).toLocaleString()}</b> · each
+          message costs <b>{result.pricePerMessage}</b>. You earn points for every cognition you
+          spend; the steward earns points too.
         </p>
+        {!result.alreadyRenting ? (
+          <p style={{ margin: 0, fontSize: "0.9rem" }}>
+            <b>+{result.points.renter} points</b> for you · +{result.points.steward} for the steward.
+          </p>
+        ) : null}
         <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.8rem" }}>
-          The chat button below is your rental link — bookmark it, it unlocks the chat for the whole
-          rental window.
+          The chat button is your rental link — bookmark it, it works for the whole rental window.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {result.circleAdded ? (
-            <Link className="btn btn-primary btn-sm" href={`/chat/${listingId}?rental=${result.rentalId}`}>
-              Chat with it now
-            </Link>
-          ) : null}
-          <Link className="btn btn-ghost btn-sm" href="/points">View your Synapses</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (stage === "checkout" || stage === "processing") {
-    return (
-      <div className="card" style={{ display: "grid", gap: 12 }}>
-        <span className="eyebrow section-eyebrow">Cognition checkout · demo</span>
-        <h3 style={{ margin: 0 }}>Fuel this rental</h3>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.88rem" }}>
-          Rentals are settled in Cognition — your payment tops up <b>{title}</b>&apos;s own cognition
-          balance, which fuels every answer it gives you.
-        </p>
-        <div className="table-wrap">
-          <table>
-            <tbody>
-              <tr><td>Rental — {days} day{days > 1 ? "s" : ""} × {ratePerDay} Cognition</td><td style={{ textAlign: "right" }}>{cognition.toLocaleString()}</td></tr>
-              <tr><td>Platform margin (15%)</td><td style={{ textAlign: "right" }}>{platformFee.toLocaleString()}</td></tr>
-              <tr><td><b>Total</b></td><td style={{ textAlign: "right" }}><b>{(cognition + platformFee).toLocaleString()} Cognition ≈ ${usd}</b></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.78rem" }}>
-          In production this is a Stripe Checkout via HelloMinds&apos; native per-Mind top-up
-          endpoint. The demo simulates the payment and performs the real Circle grant.
-        </p>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn btn-primary" onClick={confirm} disabled={stage === "processing"}>
-            {stage === "processing" ? "Adding you to the Circle…" : `Pay ${(cognition + platformFee).toLocaleString()} Cognition`}
-          </button>
-          <button className="btn btn-ghost" onClick={() => setStage("form")} disabled={stage === "processing"}>
-            Back
-          </button>
+          <Link className="btn btn-primary btn-sm" href={`/chat/${listingId}?rental=${result.rentalId}`}>
+            Start chatting
+          </Link>
+          <Link className="btn btn-ghost btn-sm" href="/points">View your points</Link>
         </div>
       </div>
     );
@@ -129,12 +85,17 @@ export default function RentPanel({
 
   return (
     <div className="card" style={{ display: "grid", gap: 4 }}>
-      <h3 style={{ margin: "0 0 8px" }}>Rent this Mind</h3>
+      <h3 style={{ margin: "0 0 4px" }}>Rent this Mind</h3>
+      <p style={{ margin: "0 0 10px", color: "var(--muted)", fontSize: "0.88rem" }}>
+        Free to start — you pay <b>{pricePerMessage} cognition per message</b> from your balance.
+        New renters get <b>1,000 cognition free</b> (Season 0). Every cognition you spend earns you
+        points toward the airdrop.
+      </p>
       {stage === "error" ? (
         <p style={{ color: "var(--danger)", fontSize: "0.85rem", margin: "0 0 8px" }}>{error}</p>
       ) : null}
       <div className="field">
-        <label htmlFor="renter-email">Your email (joins the Mind&apos;s Circle)</label>
+        <label htmlFor="renter-email">Your email</label>
         <input
           id="renter-email"
           type="email"
@@ -144,24 +105,24 @@ export default function RentPanel({
         />
       </div>
       <div className="field">
-        <label htmlFor="rent-days">Duration</label>
+        <label htmlFor="rent-days">Access period</label>
         <select id="rent-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
-          {[1, 3, 7, 14].filter((d) => d >= minDays).map((d) => (
-            <option key={d} value={d}>{d} day{d > 1 ? "s" : ""} — {(ratePerDay * d).toLocaleString()} Cognition</option>
+          {[3, 7, 14, 30].filter((d) => d >= minDays).map((d) => (
+            <option key={d} value={d}>{d} days</option>
           ))}
         </select>
       </div>
       {!isLive ? (
         <p style={{ color: "var(--warn)", fontSize: "0.8rem", margin: "0 0 10px" }}>
-          Seeded demo Mind — checkout is simulated end-to-end, no real Circle change.
+          This listing has no live Mind attached.
         </p>
       ) : null}
       <button
         className="btn btn-primary"
-        disabled={!/.+@.+\..+/.test(email)}
-        onClick={() => setStage("checkout")}
+        disabled={!/.+@.+\..+/.test(email) || stage === "processing" || !isLive}
+        onClick={rent}
       >
-        Continue to checkout
+        {stage === "processing" ? "Opening your session…" : "Start renting — free"}
       </button>
     </div>
   );

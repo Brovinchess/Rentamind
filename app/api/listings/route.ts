@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createListing, getListing, getListingsForSteward, updateListing } from "@/lib/db";
-import { listMindsCached, STEWARD_EMAIL } from "@/lib/minds";
+import { roleDnaMessage } from "@/lib/envelope";
+import { listMindsCached, minds, STEWARD_EMAIL } from "@/lib/minds";
 import type { Listing } from "@/lib/types";
 
 const EDITABLE_FIELDS = [
@@ -11,9 +12,24 @@ const EDITABLE_FIELDS = [
   "emoji",
   "label",
   "rate_cognition_per_day",
+  "price_per_message",
   "min_days",
   "max_concurrent",
 ] as const;
+
+/** Sends the steward-vs-client protection rule to the Mind (once per listing). */
+async function sendServiceDna(listing: Listing): Promise<void> {
+  if (!listing.mind_id || listing.service_dna_sent_at) return;
+  try {
+    const alias = `ram-${listing.mind_id.slice(0, 8)}`;
+    const c = minds();
+    await c.ensureConversation(alias, listing.mind_id);
+    await c.sendMessage({ alias, messageText: roleDnaMessage(STEWARD_EMAIL) });
+    await updateListing(listing.id, { service_dna_sent_at: new Date().toISOString() });
+  } catch {
+    // best-effort — steward can re-trigger by editing the listing
+  }
+}
 
 function pickEditable(body: Record<string, unknown>): Partial<Listing> {
   if (body.ratePerDay !== undefined && body.rate_cognition_per_day === undefined) {
@@ -25,6 +41,9 @@ function pickEditable(body: Record<string, unknown>): Partial<Listing> {
   }
   if (patch.rate_cognition_per_day !== undefined) {
     patch.rate_cognition_per_day = Math.max(10, Number(patch.rate_cognition_per_day) || 100);
+  }
+  if (patch.price_per_message !== undefined) {
+    patch.price_per_message = Math.max(1, Math.min(500, Number(patch.price_per_message) || 10));
   }
   if (patch.min_days !== undefined) patch.min_days = Math.max(1, Math.min(30, Number(patch.min_days) || 1));
   if (patch.max_concurrent !== undefined) {
@@ -64,6 +83,7 @@ export async function POST(req: Request) {
     if (existing) {
       // Delisted before — reactivate with the new details, keeping rental history.
       const listing = await updateListing(existing.id, { ...pickEditable(body), is_active: true });
+      await sendServiceDna(listing);
       return NextResponse.json({ listing, relisted: true });
     }
 
@@ -77,6 +97,7 @@ export async function POST(req: Request) {
       ...pickEditable(body),
       is_seeded: false,
     });
+    await sendServiceDna(listing);
     return NextResponse.json({ listing });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "listing error" }, { status: 500 });
@@ -94,7 +115,11 @@ export async function PATCH(req: Request) {
     if (!Object.keys(patch).length) {
       return NextResponse.json({ error: "No editable fields supplied" }, { status: 400 });
     }
-    const updated = await updateListing(listing.id, patch);
+    let updated = await updateListing(listing.id, patch);
+    if (updated.is_active && !updated.service_dna_sent_at) {
+      await sendServiceDna(updated);
+      updated = (await getListing(updated.id)) ?? updated;
+    }
     return NextResponse.json({ listing: updated });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "listing error" }, { status: 500 });

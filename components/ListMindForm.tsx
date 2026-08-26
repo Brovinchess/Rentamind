@@ -21,7 +21,7 @@ export default function ListMindForm({
     tagline: "",
     description: "",
     category: "Personas",
-    ratePerDay: 100,
+    price_per_message: 10,
     emoji: "brain",
   });
 
@@ -86,8 +86,8 @@ export default function ListMindForm({
           </select>
         </div>
         <div className="field">
-          <label htmlFor="lm-rate">Cognition / day</label>
-          <input id="lm-rate" type="number" min={10} value={form.ratePerDay} onChange={(e) => setForm({ ...form, ratePerDay: Number(e.target.value) })} />
+          <label htmlFor="lm-rate">Cognition / message</label>
+          <input id="lm-rate" type="number" min={1} value={form.price_per_message} onChange={(e) => setForm({ ...form, price_per_message: Number(e.target.value) })} />
         </div>
         <div className="field">
           <label htmlFor="lm-icon">Icon</label>

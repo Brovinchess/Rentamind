@@ -15,7 +15,7 @@ export default function SettleButton() {
       const res = await fetch("/api/settle", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "settle failed");
-      setMsg(`Expired ${data.expired}, metered ${data.settled}, +${data.pointsAwarded} Synapses`);
+      setMsg(`Expired ${data.expired} rental${data.expired === 1 ? "" : "s"}`);
       router.refresh();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
