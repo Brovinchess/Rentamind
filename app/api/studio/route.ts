@@ -16,12 +16,13 @@ export const maxDuration = 120;
 async function equipSearchTool(mindId: string): Promise<string | null> {
   const c = minds();
   try {
+    const isSearchApp = (name: unknown) => /tavily|perplexity|serp|web.?search/i.test(String(name ?? ""));
     const equipped = await c.listEquippedApps(mindId);
-    const has = equipped.find((a) => /perplexity|serp|search/i.test(String(a.appName ?? "")));
+    const has = equipped.find((a) => isSearchApp(a.appName));
     if (has) return String(has.appName);
-    for (const term of ["perplexity", "serpapi", "search"]) {
+    for (const term of ["tavily", "perplexity", "serp"]) {
       const res = await c.bazaar.listApps({ search: term, tier: "verified" });
-      const app = res.items?.find((a) => a.appId);
+      const app = res.items?.find((a) => a.appId && isSearchApp(a.appName));
       if (app?.appId) {
         await c.equipApps(mindId, { ids: [app.appId] });
         return String(app.appName ?? term);
