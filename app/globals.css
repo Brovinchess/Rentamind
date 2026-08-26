@@ -283,3 +283,8 @@ td { font-variant-numeric: tabular-nums; }
   color: var(--muted); font-size: 0.8rem;
 }
 .empty { text-align: center; color: var(--muted); padding: 48px 0; }
+
+/* ── studio ── */
+.spin { animation: spin 1.2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

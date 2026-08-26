@@ -126,6 +126,83 @@ export async function spendFromWallet(email: string, amount: number): Promise<nu
   return newBalance;
 }
 
+/* ── Training Studio ── */
+
+export type TrainingPlan = {
+  id: string;
+  mind_id: string;
+  mind_name: string;
+  archetype: string;
+  persona_name: string;
+  brief: Record<string, unknown>;
+  last_score: number | null;
+  created_at: string;
+};
+
+export type TrainingSession = {
+  id: string;
+  plan_id: string;
+  status: "running" | "done" | "failed";
+  cursor: number;
+  steps: unknown[];
+  report: Record<string, unknown> | null;
+  score: number | null;
+  created_at: string;
+  finished_at: string | null;
+};
+
+export async function createTrainingPlan(row: Partial<TrainingPlan>): Promise<TrainingPlan> {
+  const { data, error } = await db().from("ram_training_plans").insert(row).select().single();
+  if (error) throw new Error(`plan: ${error.message}`);
+  return data as TrainingPlan;
+}
+
+export async function getTrainingPlan(id: string): Promise<TrainingPlan | null> {
+  const { data } = await db().from("ram_training_plans").select("*").eq("id", id).maybeSingle();
+  return (data as TrainingPlan) ?? null;
+}
+
+export async function getTrainingPlans(): Promise<TrainingPlan[]> {
+  const { data, error } = await db()
+    .from("ram_training_plans")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (error) throw new Error(`plans: ${error.message}`);
+  return (data ?? []) as TrainingPlan[];
+}
+
+export async function updateTrainingPlan(id: string, patch: Partial<TrainingPlan>): Promise<void> {
+  const { error } = await db().from("ram_training_plans").update(patch).eq("id", id);
+  if (error) throw new Error(`plan update: ${error.message}`);
+}
+
+export async function createTrainingSession(row: Partial<TrainingSession>): Promise<TrainingSession> {
+  const { data, error } = await db().from("ram_training_sessions").insert(row).select().single();
+  if (error) throw new Error(`session: ${error.message}`);
+  return data as TrainingSession;
+}
+
+export async function getTrainingSession(id: string): Promise<TrainingSession | null> {
+  const { data } = await db().from("ram_training_sessions").select("*").eq("id", id).maybeSingle();
+  return (data as TrainingSession) ?? null;
+}
+
+export async function getSessionsForPlan(planId: string): Promise<TrainingSession[]> {
+  const { data, error } = await db()
+    .from("ram_training_sessions")
+    .select("*")
+    .eq("plan_id", planId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`sessions: ${error.message}`);
+  return (data ?? []) as TrainingSession[];
+}
+
+export async function updateTrainingSession(id: string, patch: Partial<TrainingSession>): Promise<void> {
+  const { error } = await db().from("ram_training_sessions").update(patch).eq("id", id);
+  if (error) throw new Error(`session update: ${error.message}`);
+}
+
 export async function addPoints(rows: Partial<PointsEvent>[]): Promise<void> {
   if (!rows.length) return;
   const { error } = await db().from("ram_points_events").insert(rows);
