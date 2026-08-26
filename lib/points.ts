@@ -25,6 +25,24 @@ export function aggregateLeaderboard(events: Pick<PointsEvent, "subject_email" |
 }
 
 /**
+ * Throttled background settlement: runs at most once per THROTTLE_MS per server
+ * instance. Called via `after()` on page visits so settlement stays fresh between
+ * the daily cron runs (Hobby-plan crons fire only once a day).
+ */
+const SETTLE_THROTTLE_MS = 10 * 60 * 1000;
+let lastSettleAt = 0;
+export async function settleIfStale(): Promise<void> {
+  const now = Date.now();
+  if (now - lastSettleAt < SETTLE_THROTTLE_MS) return;
+  lastSettleAt = now;
+  try {
+    await settle();
+  } catch {
+    // background pass — never surface to the page
+  }
+}
+
+/**
  * Lazy settlement pass (demo stand-in for a cron):
  * - expire active rentals past their window (real circle removal when applicable)
  * - meter cognition burned during each live rental window and award usage points

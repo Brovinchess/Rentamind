@@ -10,6 +10,8 @@ export function proxy(request: NextRequest) {
   const open =
     pathname === "/gate" ||
     pathname === "/api/gate" ||
+    // Cron trigger authenticates itself with CRON_SECRET inside the route
+    (pathname === "/api/settle" && request.method === "GET") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico";
   if (open) return NextResponse.next();

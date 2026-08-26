@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { after } from "next/server";
 import ListMindForm from "@/components/ListMindForm";
 import SettleButton from "@/components/SettleButton";
+import { settleIfStale } from "@/lib/points";
 import { getListings, getPointsEvents, getRentalsForListing } from "@/lib/db";
 import { getLiveMindStats, listMindsCached, STEWARD_EMAIL, trainingScore } from "@/lib/minds";
 import type { Rental } from "@/lib/types";
@@ -8,6 +10,7 @@ import type { Rental } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
+  after(settleIfStale); // keep rentals settled between daily cron runs
   let liveError: string | null = null;
   let mindRows: {
     mindId: string;

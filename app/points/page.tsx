@@ -1,5 +1,6 @@
+import { after } from "next/server";
 import { getAllPointsEvents, getPointsEvents } from "@/lib/db";
-import { aggregateLeaderboard } from "@/lib/points";
+import { aggregateLeaderboard, settleIfStale } from "@/lib/points";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 export default async function PointsPage() {
+  after(settleIfStale); // keep rentals settled between daily cron runs
   const [all, recent] = await Promise.all([
     getAllPointsEvents().catch(() => []),
     getPointsEvents(30).catch(() => []),
