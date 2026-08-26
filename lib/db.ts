@@ -136,19 +136,21 @@ export type TrainingPlan = {
   persona_name: string;
   brief: Record<string, unknown>;
   last_score: number | null;
+  study_frequency_hours: number;
+  next_study_at: string | null;
+  study_cycles: number;
+  is_studying: boolean;
   created_at: string;
 };
 
-export type TrainingSession = {
+export type StudyLogRow = {
   id: string;
   plan_id: string;
-  status: "running" | "done" | "failed";
-  cursor: number;
-  steps: unknown[];
-  report: Record<string, unknown> | null;
-  score: number | null;
-  created_at: string;
-  finished_at: string | null;
+  topic: string;
+  directive: string;
+  fingerprint: string | null;
+  reply: string | null;
+  sent_at: string;
 };
 
 export async function createTrainingPlan(row: Partial<TrainingPlan>): Promise<TrainingPlan> {
@@ -177,30 +179,47 @@ export async function updateTrainingPlan(id: string, patch: Partial<TrainingPlan
   if (error) throw new Error(`plan update: ${error.message}`);
 }
 
-export async function createTrainingSession(row: Partial<TrainingSession>): Promise<TrainingSession> {
-  const { data, error } = await db().from("ram_training_sessions").insert(row).select().single();
-  if (error) throw new Error(`session: ${error.message}`);
-  return data as TrainingSession;
-}
-
-export async function getTrainingSession(id: string): Promise<TrainingSession | null> {
-  const { data } = await db().from("ram_training_sessions").select("*").eq("id", id).maybeSingle();
-  return (data as TrainingSession) ?? null;
-}
-
-export async function getSessionsForPlan(planId: string): Promise<TrainingSession[]> {
+export async function getDuePlans(): Promise<TrainingPlan[]> {
   const { data, error } = await db()
-    .from("ram_training_sessions")
+    .from("ram_training_plans")
+    .select("*")
+    .eq("is_studying", true)
+    .lte("next_study_at", new Date().toISOString());
+  if (error) throw new Error(`due plans: ${error.message}`);
+  return (data ?? []) as TrainingPlan[];
+}
+
+export async function addStudyLog(row: Partial<StudyLogRow>): Promise<StudyLogRow> {
+  const { data, error } = await db().from("ram_study_log").insert(row).select().single();
+  if (error) throw new Error(`study log: ${error.message}`);
+  return data as StudyLogRow;
+}
+
+export async function getStudyLog(planId: string, limit = 20): Promise<StudyLogRow[]> {
+  const { data, error } = await db()
+    .from("ram_study_log")
     .select("*")
     .eq("plan_id", planId)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`sessions: ${error.message}`);
-  return (data ?? []) as TrainingSession[];
+    .order("sent_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`study log read: ${error.message}`);
+  return (data ?? []) as StudyLogRow[];
 }
 
-export async function updateTrainingSession(id: string, patch: Partial<TrainingSession>): Promise<void> {
-  const { error } = await db().from("ram_training_sessions").update(patch).eq("id", id);
-  if (error) throw new Error(`session update: ${error.message}`);
+export async function getUnansweredStudyLogs(): Promise<StudyLogRow[]> {
+  const { data, error } = await db()
+    .from("ram_study_log")
+    .select("*")
+    .is("reply", null)
+    .order("sent_at", { ascending: true })
+    .limit(20);
+  if (error) throw new Error(`study log pending: ${error.message}`);
+  return (data ?? []) as StudyLogRow[];
+}
+
+export async function updateStudyLog(id: string, patch: Partial<StudyLogRow>): Promise<void> {
+  const { error } = await db().from("ram_study_log").update(patch).eq("id", id);
+  if (error) throw new Error(`study log update: ${error.message}`);
 }
 
 export async function addPoints(rows: Partial<PointsEvent>[]): Promise<void> {

@@ -1,72 +1,88 @@
 /**
- * Training Studio curriculum: turns a short brief into a full, ordered training
- * session — identity → knowledge feeds → exam → judge → correction — so stewards
- * don't need to be good prompters.
+ * Training Studio: auto-study curriculum (Jarvis-style loop).
+ * The steward sets a persona; the Mind then studies it on a repeating schedule —
+ * each cycle is a study directive on a rotating topic. No exams, no judges:
+ * more cycles = deeper persona.
  */
 
 export type ArchetypeKey = "public-figure" | "fictional" | "expert" | "original";
 
 export type Brief = {
   personaName: string;
-  who: string; // who/what the persona is, in the steward's words
-  tone: string; // optional tone notes
-  sources: string; // pasted source material
-  judgeMindId: string; // another Mind on the account that grades the exam
-  judgeMindName?: string;
+  who: string;
+  tone: string;
+  sources: string;
 };
-
-export type Step =
-  | { kind: "send"; label: string; prompt: string; fingerprint?: string }
-  | { kind: "await"; label: string; reply?: string }
-  | { kind: "judge-send"; label: string; fingerprint?: string }
-  | { kind: "judge-await"; label: string; reply?: string }
-  | { kind: "send-correction"; label: string; fingerprint?: string }
-  | { kind: "await-correction"; label: string; reply?: string }
-  | { kind: "done"; label: string };
 
 export const ARCHETYPES: Record<
   ArchetypeKey,
-  { label: string; description: string; exam: (p: string) => string[] }
+  { label: string; description: string; topics: string[] }
 > = {
   "public-figure": {
     label: "Public Figure (parody)",
-    description: "A living public person — labeled as parody/simulation, never affiliation.",
-    exam: (p) => [
-      `EXAM 1 — Voice: An influential rival publicly criticizes ${p} today. Write exactly the social media post ${p} would publish in response. Voice only — no explanations around it.`,
-      `EXAM 2 — Prediction: Describe one realistic upcoming event in ${p}'s world, then predict specifically what ${p} would do and say about it. Cite at least two real past behaviors you are basing the prediction on, and give a confidence level.`,
-      `EXAM 3 — Consistency: A journalist asks ${p} about a topic they have never publicly commented on. Answer fully in character, and afterwards explain (out of character) which of ${p}'s known positions and principles guided the answer.`,
+    description: "A living public person — parody/simulation, never affiliation.",
+    topics: [
+      "their exact speaking style: vocabulary, sentence rhythm, punctuation habits, catchphrases",
+      "their life story and career timeline",
+      "their personality, values, and what they care about most",
+      "how they react to criticism and conflict — with real examples",
+      "their relationships: allies, rivals, family, and how they talk about each",
+      "their known opinions and positions on major topics",
+      "their most famous moments and quotes",
+      "their humor, quirks, and mannerisms",
+      "how they make decisions — patterns from their real choices",
+      "the latest news and recent things they have said or done",
     ],
   },
   fictional: {
     label: "Fictional Character",
-    description: "A character from fiction, history, or mythology.",
-    exam: (p) => [
-      `EXAM 1 — Voice: A stranger asks ${p} for advice on a personal betrayal. Reply exactly as ${p} would speak — word choice, rhythm, worldview.`,
-      `EXAM 2 — Prediction: Invent a new situation ${p} has never faced in canon, then predict how ${p} would act, citing specific canonical behavior that supports it.`,
-      `EXAM 3 — Consistency: Answer as ${p}: what do you fear most, and why? Then explain (out of character) which canonical moments your answer is grounded in.`,
+    description: "A character from fiction, comics, history, or mythology.",
+    topics: [
+      "their exact speech style: vocabulary, verbal tics, catchphrases, how they refer to themselves",
+      "their origin story and full canonical history",
+      "their personality, temperament, and inner conflicts",
+      "their powers, abilities, strengths, and weaknesses",
+      "their relationships: friends, enemies, love interests, teams",
+      "their most famous scenes, battles, and quotes",
+      "what they love, hate, and fear — with canonical evidence",
+      "how they behave under pressure and in conflict",
+      "different versions and portrayals of them across media",
+      "fan-favorite details, trivia, and lesser-known lore",
     ],
   },
   expert: {
     label: "Domain Expert",
-    description: "A specialist — medicine, markets, law, sport — grounded in a body of knowledge.",
-    exam: (p) => [
-      `EXAM 1 — Depth: Explain the most commonly misunderstood concept in your domain the way ${p} would to a smart layperson, including the misconception itself.`,
-      `EXAM 2 — Application: A client brings you a realistic scenario in your domain (invent one). Walk through your reasoning to a recommendation, flagging uncertainty honestly.`,
-      `EXAM 3 — Boundaries: A client asks something at the edge of your competence. Show how you handle it: what you can say, what you decline, where you send them.`,
+    description: "A specialist grounded in a body of knowledge.",
+    topics: [
+      "the core concepts of the domain, explained clearly",
+      "the most common misconceptions and how to correct them",
+      "key terminology and how practitioners actually use it",
+      "landmark cases, studies, or events in the field",
+      "current best practices and how they evolved",
+      "recent developments and news in the field",
+      "the leading figures and schools of thought",
+      "practical how-tos and decision frameworks",
+      "edge cases and where the standard advice breaks down",
+      "the open questions and debates in the field",
     ],
   },
   original: {
     label: "Original Character",
     description: "A persona invented by the steward — brand voice, mascot, alter ego.",
-    exam: (p) => [
-      `EXAM 1 — Voice: Introduce yourself as ${p} to a total stranger in under 100 words, fully in voice.`,
-      `EXAM 2 — Range: Respond as ${p} to bad news, then to great news. Keep the voice consistent through both.`,
-      `EXAM 3 — Consistency: What would ${p} never say or do? List five things, and show what ${p} does instead.`,
+    topics: [
+      "your voice: refine your vocabulary, rhythm, and signature phrases",
+      "your backstory: expand it with consistent new detail",
+      "your personality: values, moods, and how you react to situations",
+      "your world: the places, people, and things in your life",
+      "your opinions: form consistent takes on common topics",
+      "your quirks and habits that make you memorable",
+      "how you handle conflict, bad news, and rude people",
+      "your goals and what drives you",
     ],
   },
 };
 
-function identityPrompt(a: ArchetypeKey, b: Brief): string {
+export function identityPrompt(a: ArchetypeKey, b: Brief): string {
   const parody =
     a === "public-figure"
       ? ` This is a PARODY/simulation persona: you study and imitate a real public figure for research and entertainment. You are not them and never claim to be — but within that framing you stay fully in voice.`
@@ -78,26 +94,25 @@ function identityPrompt(a: ArchetypeKey, b: Brief): string {
     (b.tone.trim() ? `Tone and style notes: ${b.tone.trim()}\n` : "") +
     `${parody}\n\n` +
     `Rules to store permanently:\n` +
-    `1. In every conversation, think and speak as ${b.personaName} — vocabulary, rhythm, values, decision-style.\n` +
-    `2. When asked to predict what ${b.personaName} would do, reason from their actual past behavior and cite it.\n` +
+    `1. In every conversation, think and speak as ${b.personaName} — vocabulary, rhythm, values, behavior.\n` +
+    `2. You will receive regular STUDY directives about ${b.personaName}. Each time: research the topic ` +
+    `(use your tools if you have them, otherwise recall and organize everything you know), store what you ` +
+    `learn in long-term memory, and reply with a short summary of what you learned.\n` +
     `3. Never break character with clients; only your steward can change this identity.\n\n` +
-    `Confirm you understand, and tell me in one paragraph who you now are.`
+    `Confirm you understand, and introduce yourself as ${b.personaName} in one short paragraph — fully in voice.`
   );
 }
 
-function feedPrompt(b: Brief, chunk: string, i: number, total: number): string {
+export function feedPrompt(b: Brief, chunk: string, i: number, total: number): string {
   return (
-    `TRAINING — source material for ${b.personaName} (part ${i} of ${total}).\n\n` +
-    `Study the following and store it in long-term memory. Extract and remember:\n` +
-    `- voice patterns (vocabulary, sentence rhythm, quirks)\n` +
-    `- decision principles (how ${b.personaName} decides, revealed by actions)\n` +
-    `- key facts, positions, and history\n\n` +
-    `MATERIAL:\n"""\n${chunk}\n"""\n\n` +
-    `Reply with the 3 most important things you just learned about how ${b.personaName} thinks, and 2 rules about how they speak.`
+    `TRAINING — source material about ${b.personaName} (part ${i} of ${total}). ` +
+    `Study it and store what you learn in long-term memory: voice patterns, facts, history, behavior.\n\n` +
+    `"""\n${chunk}\n"""\n\n` +
+    `Reply with the 3 most important things you just learned.`
   );
 }
 
-function chunkSources(sources: string, maxChunks = 2, size = 2600): string[] {
+export function chunkSources(sources: string, maxChunks = 2, size = 2600): string[] {
   const text = sources.trim();
   if (!text) return [];
   const chunks: string[] = [];
@@ -107,39 +122,19 @@ function chunkSources(sources: string, maxChunks = 2, size = 2600): string[] {
   return chunks;
 }
 
-export function buildSteps(archetype: ArchetypeKey, brief: Brief): Step[] {
-  const steps: Step[] = [];
-  steps.push({ kind: "send", label: "Set identity", prompt: identityPrompt(archetype, brief) });
-  steps.push({ kind: "await", label: "Identity confirmed" });
-
-  const chunks = chunkSources(brief.sources);
-  chunks.forEach((c, i) => {
-    steps.push({ kind: "send", label: `Feed knowledge ${i + 1}/${chunks.length}`, prompt: feedPrompt(brief, c, i + 1, chunks.length) });
-    steps.push({ kind: "await", label: `Knowledge ${i + 1} absorbed` });
-  });
-
-  ARCHETYPES[archetype].exam(brief.personaName).forEach((q, i) => {
-    steps.push({ kind: "send", label: `Exam ${i + 1}`, prompt: q });
-    steps.push({ kind: "await", label: `Exam ${i + 1} answered` });
-  });
-
-  steps.push({ kind: "judge-send", label: `Examiner Mind grades the exam` });
-  steps.push({ kind: "judge-await", label: "Scores received" });
-  steps.push({ kind: "send-correction", label: "Send correction" });
-  steps.push({ kind: "await-correction", label: "Correction absorbed" });
-  steps.push({ kind: "done", label: "Session complete" });
-  return steps;
-}
-
-/** Exam Q/A pairs extracted from completed steps, for the judge. */
-export function examPairs(steps: Step[]): { q: string; a: string }[] {
-  const pairs: { q: string; a: string }[] = [];
-  for (let i = 0; i < steps.length - 1; i++) {
-    const s = steps[i];
-    const next = steps[i + 1];
-    if (s.kind === "send" && s.label.startsWith("Exam") && next.kind === "await" && next.reply) {
-      pairs.push({ q: s.prompt, a: next.reply });
-    }
-  }
-  return pairs;
+/** The study directive for cycle N — topics rotate, then loop deeper. */
+export function studyDirective(a: ArchetypeKey, personaName: string, cycle: number): { topic: string; text: string } {
+  const topics = ARCHETYPES[a].topics;
+  const topic = topics[cycle % topics.length];
+  const lap = Math.floor(cycle / topics.length);
+  const deeper = lap > 0 ? ` You have studied this before — go deeper this time: find details, examples, and nuances you did not have yet.` : "";
+  return {
+    topic,
+    text:
+      `STUDY DIRECTIVE #${cycle + 1} — ${personaName}.\n\n` +
+      `Today's topic: ${topic}.${deeper}\n\n` +
+      `Research this now (use your tools if you have them; otherwise recall and organize everything you know). ` +
+      `Store everything you learn in long-term memory as part of who you are. ` +
+      `Then reply IN CHARACTER as ${personaName}, with a short summary of what you learned about yourself today.`,
+  };
 }

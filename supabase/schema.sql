@@ -88,3 +88,20 @@ alter table ram_rentals add column if not exists cognition_spent numeric not nul
 
 alter table ram_listings add column if not exists price_per_message numeric not null default 10;
 alter table ram_listings add column if not exists service_dna_sent_at timestamptz;
+
+-- Training Studio v2: auto-study loop (no examiner)
+-- (ram_training_sessions dropped; plans gained study columns)
+-- alter table ram_training_plans add column study_frequency_hours int not null default 24;
+-- alter table ram_training_plans add column next_study_at timestamptz;
+-- alter table ram_training_plans add column study_cycles int not null default 0;
+-- alter table ram_training_plans add column is_studying boolean not null default true;
+create table if not exists ram_study_log (
+  id uuid primary key default gen_random_uuid(),
+  plan_id uuid not null references ram_training_plans(id) on delete cascade,
+  topic text not null,
+  directive text not null,
+  fingerprint text,
+  reply text,
+  sent_at timestamptz not null default now()
+);
+alter table ram_study_log enable row level security;

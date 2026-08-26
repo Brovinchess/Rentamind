@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { settle } from "@/lib/points";
+import { runDueStudies } from "@/lib/study";
 
 export const maxDuration = 120;
 
 async function run() {
   try {
     const result = await settle();
-    return NextResponse.json(result);
+    const study = await runDueStudies();
+    return NextResponse.json({ ...result, studySent: study.sent, studyReplies: study.repliesCollected });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "settle error" }, { status: 500 });
   }

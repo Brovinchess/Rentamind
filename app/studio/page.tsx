@@ -1,4 +1,4 @@
-import { getTrainingPlans, getSessionsForPlan } from "@/lib/db";
+import { getStudyLog, getTrainingPlans } from "@/lib/db";
 import { listMindsCached } from "@/lib/minds";
 import StudioWizard from "@/components/StudioWizard";
 
@@ -9,38 +9,42 @@ export default async function StudioPage() {
     listMindsCached().catch(() => []),
     getTrainingPlans().catch(() => []),
   ]);
-  const plansWithScores = await Promise.all(
-    plans.map(async (p) => {
-      const sessions = await getSessionsForPlan(p.id).catch(() => []);
-      return {
-        id: p.id,
-        mindName: p.mind_name,
-        personaName: p.persona_name,
-        archetype: p.archetype,
-        lastScore: p.last_score != null ? Number(p.last_score) : null,
-        sessionCount: sessions.length,
-        latestSessionId: sessions[0]?.id ?? null,
-        latestStatus: sessions[0]?.status ?? null,
-      };
-    }),
+  const planRows = await Promise.all(
+    plans.map(async (p) => ({
+      id: p.id,
+      mindId: p.mind_id,
+      mindName: p.mind_name,
+      personaName: p.persona_name,
+      archetype: p.archetype,
+      frequencyHours: p.study_frequency_hours,
+      cycles: p.study_cycles,
+      isStudying: p.is_studying,
+      nextStudyAt: p.next_study_at,
+      log: (await getStudyLog(p.id, 10).catch(() => [])).map((l) => ({
+        id: l.id,
+        topic: l.topic,
+        reply: l.reply,
+        sent_at: l.sent_at,
+      })),
+    })),
   );
 
   return (
     <main className="container page narrow">
       <span className="eyebrow section-eyebrow">Training Studio</span>
-      <h2 className="section-title">Train a persona without being a prompter</h2>
+      <h2 className="section-title">Set a persona. Your Mind studies it on repeat.</h2>
       <p style={{ color: "var(--muted)", maxWidth: "64ch" }}>
-        Pick a Mind, describe the persona, paste some source material — the Studio runs the whole
-        training session for you: identity, knowledge feeds, a three-question exam graded by one of
-        your other Minds, and a correction. Every message burns cognition and earns you training
-        points. Run more sessions to push the score up.
+        Tell your Mind who to become — it then studies that persona automatically on a schedule you
+        control: speech style, history, behavior, opinions, one topic per cycle, stored permanently
+        in its memory. More cycles = deeper persona. Every cycle burns cognition and earns you
+        training points. When it&apos;s ready, list it for rent.
       </p>
 
       <StudioWizard
         minds={mindsList
           .filter((m) => m.isEnabled)
           .map((m) => ({ mindId: m.mindId, name: m.name ?? "unnamed" }))}
-        plans={plansWithScores}
+        plans={planRows}
       />
     </main>
   );

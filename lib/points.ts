@@ -37,6 +37,8 @@ export async function settleIfStale(): Promise<void> {
   lastSettleAt = now;
   try {
     await settle();
+    const { runDueStudies } = await import("./study");
+    await runDueStudies();
   } catch {
     // background pass — never surface to the page
   }
