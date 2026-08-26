@@ -1,13 +1,17 @@
-import { getStudyLog, getTrainingPlans } from "@/lib/db";
-import { listMindsCached } from "@/lib/minds";
+import { redirect } from "next/navigation";
+import { getAuthedUser } from "@/lib/auth";
+import { getStudyLog, getTrainingPlansForOwner } from "@/lib/db";
+import { listMindsFor } from "@/lib/minds";
 import StudioWizard from "@/components/StudioWizard";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudioPage() {
+  const user = await getAuthedUser();
+  if (!user) redirect("/login?next=/studio");
   const [mindsList, plans] = await Promise.all([
-    listMindsCached().catch(() => []),
-    getTrainingPlans().catch(() => []),
+    listMindsFor(user.builderKey).catch(() => []),
+    getTrainingPlansForOwner(user.email).catch(() => []),
   ]);
   const planRows = await Promise.all(
     plans.map(async (p) => ({

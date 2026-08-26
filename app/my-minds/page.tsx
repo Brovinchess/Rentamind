@@ -5,14 +5,18 @@ import MindAvatar from "@/components/MindAvatar";
 import ManageListings from "@/components/ManageListings";
 import SettleButton from "@/components/SettleButton";
 import { settleIfStale } from "@/lib/points";
+import { redirect } from "next/navigation";
+import { getAuthedUser } from "@/lib/auth";
 import { getListingsForSteward, getPointsEvents, getRentalsForListing } from "@/lib/db";
-import { getLiveMindStats, listMindsCached, STEWARD_EMAIL, trainingScore } from "@/lib/minds";
+import { getLiveMindStats, listMindsFor, trainingScore } from "@/lib/minds";
 import type { Rental } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  after(settleIfStale); // keep rentals settled between daily cron runs
+  const user = await getAuthedUser();
+  if (!user) redirect("/login?next=/my-minds");
+  after(settleIfStale); // keep rentals settled between cron runs
   let liveError: string | null = null;
   let mindRows: {
     mindId: string;
@@ -26,10 +30,10 @@ export default async function Dashboard() {
   }[] = [];
 
   try {
-    const live = await listMindsCached();
+    const live = await listMindsFor(user.builderKey);
     mindRows = await Promise.all(
       live.map(async (m) => {
-        const stats = await getLiveMindStats(m.mindId);
+        const stats = await getLiveMindStats(user.builderKey, m.mindId);
         return {
           mindId: m.mindId,
           name: m.name ?? "unnamed",
@@ -46,7 +50,7 @@ export default async function Dashboard() {
     liveError = e instanceof Error ? e.message : String(e);
   }
 
-  const myListings = await getListingsForSteward(STEWARD_EMAIL).catch(() => []);
+  const myListings = await getListingsForSteward(user.email).catch(() => []);
   const listedMindIds = new Set(myListings.map((l) => l.mind_id));
   const unlisted = mindRows.filter((m) => !listedMindIds.has(m.mindId));
 
@@ -57,14 +61,14 @@ export default async function Dashboard() {
 
   const events = await getPointsEvents(500).catch(() => []);
   const myPoints = Math.round(
-    events.filter((e) => e.subject_email === STEWARD_EMAIL).reduce((s, e) => s + Number(e.points), 0),
+    events.filter((e) => e.subject_email === user.email).reduce((s, e) => s + Number(e.points), 0),
   );
 
   return (
     <main className="container page">
       <span className="eyebrow section-eyebrow">My Minds</span>
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <h2 className="section-title" style={{ margin: 0 }}>Trainer: {STEWARD_EMAIL}</h2>
+        <h2 className="section-title" style={{ margin: 0 }}>Trainer: {user.email}</h2>
         <span className="pill pill-live"><span className="dot" /> Builder API connected</span>
         <span className="score" style={{ fontSize: "1rem" }}>{myPoints.toLocaleString()} points</span>
         <span style={{ marginLeft: "auto" }}><SettleButton /></span>
@@ -183,8 +187,8 @@ export default async function Dashboard() {
       </div>
 
       <div className="notice" style={{ marginTop: 26 }}>
-        <b>Demo note:</b> this is a single-trainer demo signed in with Rovin&apos;s Builder API key. Balances, usage, circles, and listings marked <i>live</i> come straight from
-        HelloMinds; &quot;Settle rentals&quot; runs the metering/expiry pass a cron would run in production.
+        Balances, usage, circles, and listings come straight from your HelloMinds account.
+        &quot;Settle rentals&quot; runs the expiry pass early; a cron runs it automatically.
       </div>
     </main>
   );

@@ -3,7 +3,7 @@ import { Manrope, Space_Mono } from "next/font/google";
 import Link from "next/link";
 import { Brain } from "lucide-react";
 import MindAvatar from "@/components/MindAvatar";
-import { getSessionEmail, isTrainer } from "@/lib/auth";
+import { getSessionEmail } from "@/lib/auth";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const email = await getSessionEmail();
-  const trainer = isTrainer(email);
+  const signedIn = !!email;
 
   return (
     <html lang="en">
@@ -30,17 +30,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <nav className="nav">
               <Link href="/marketplace">Marketplace</Link>
-              {trainer ? <Link href="/my-minds">My Minds</Link> : null}
-              {trainer ? <Link href="/studio">Training Studio</Link> : null}
+              {signedIn ? <Link href="/my-minds">My Minds</Link> : null}
+              {signedIn ? <Link href="/studio">Training Studio</Link> : null}
               <Link href="/rewards">Rewards</Link>
             </nav>
-            {trainer ? (
+            {signedIn ? (
               <Link href="/launch" className="header-cta">
                 Launch a Mind
               </Link>
             ) : (
-              <Link href="/marketplace" className="header-cta">
-                Rent a Mind
+              <Link href="/login" className="header-cta">
+                Get started
               </Link>
             )}
             {email ? (

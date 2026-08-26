@@ -7,8 +7,9 @@ import {
   updateStudyLog,
   updateTrainingPlan,
 } from "./db";
+import { getBuilderKeyForEmail } from "./auth";
 import { studyDirective, type ArchetypeKey } from "./curriculum";
-import { minds, STEWARD_EMAIL } from "./minds";
+import { mindsFor } from "./minds";
 
 export const TRAINING_POINTS_PER_CYCLE = 5;
 
@@ -39,7 +40,12 @@ function stripHtml(html: string): string {
 export async function runDueStudies(): Promise<{ sent: number; repliesCollected: number }> {
   let sent = 0;
   let repliesCollected = 0;
-  const c = minds();
+  const keyCache = new Map<string, string | null>();
+  const keyFor = async (email: string | null) => {
+    if (!email) return null;
+    if (!keyCache.has(email)) keyCache.set(email, await getBuilderKeyForEmail(email));
+    return keyCache.get(email) ?? null;
+  };
 
   // 1. Collect replies to earlier directives.
   const pending = await getUnansweredStudyLogs().catch(() => []);
@@ -47,6 +53,9 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
     try {
       const plan = await getTrainingPlan(log.plan_id);
       if (!plan) continue;
+      const key = await keyFor(plan.owner_email);
+      if (!key) continue;
+      const c = mindsFor(key);
       const alias = trainAlias(plan.mind_id);
       const rows = await c.getHistory(alias, log.fingerprint ? { after: log.fingerprint, limit: 10 } : { limit: 10 });
       rows.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
@@ -64,6 +73,9 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
   const due = await getDuePlans().catch(() => []);
   for (const plan of due) {
     try {
+      const key = await keyFor(plan.owner_email);
+      if (!key) continue;
+      const c = mindsFor(key);
       const alias = trainAlias(plan.mind_id);
       const { topic, text } = studyDirective(plan.archetype as ArchetypeKey, plan.persona_name, plan.study_cycles);
       await c.ensureConversation(alias, plan.mind_id);
@@ -76,8 +88,8 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
       });
       await addPoints([
         {
-          subject_email: STEWARD_EMAIL,
-          subject_name: "Rovin",
+          subject_email: plan.owner_email ?? "unknown",
+          subject_name: (plan.owner_email ?? "").split("@")[0] || null,
           role: "steward",
           event_type: "training",
           points: TRAINING_POINTS_PER_CYCLE,

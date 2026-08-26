@@ -135,6 +135,7 @@ export type TrainingPlan = {
   archetype: string;
   persona_name: string;
   brief: Record<string, unknown>;
+  owner_email: string | null;
   last_score: number | null;
   study_frequency_hours: number;
   next_study_at: string | null;
@@ -162,6 +163,16 @@ export async function createTrainingPlan(row: Partial<TrainingPlan>): Promise<Tr
 export async function getTrainingPlan(id: string): Promise<TrainingPlan | null> {
   const { data } = await db().from("ram_training_plans").select("*").eq("id", id).maybeSingle();
   return (data as TrainingPlan) ?? null;
+}
+
+export async function getTrainingPlansForOwner(email: string): Promise<TrainingPlan[]> {
+  const { data, error } = await db()
+    .from("ram_training_plans")
+    .select("*")
+    .eq("owner_email", email.toLowerCase())
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`plans: ${error.message}`);
+  return (data ?? []) as TrainingPlan[];
 }
 
 export async function getTrainingPlans(): Promise<TrainingPlan[]> {

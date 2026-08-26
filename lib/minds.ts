@@ -1,24 +1,28 @@
-import { createMindsClient, type MindsClient, type BuilderMind } from "@animocabrands/minds-client-lib";
+import { createMindsClient, type BuilderMind, type MindsClient } from "@animocabrands/minds-client-lib";
 
-let _client: MindsClient | null = null;
+/**
+ * Per-user Minds clients. Every operation is scoped to a specific user's
+ * Builder key — there is no global account anymore.
+ */
 
-export function minds(): MindsClient {
-  if (!_client) {
-    const builderApiKey = process.env.MINDS_BUILDER_API_KEY;
-    if (!builderApiKey) throw new Error("MINDS_BUILDER_API_KEY is not set");
-    _client = createMindsClient({ builderApiKey });
+const clients = new Map<string, MindsClient>();
+export function mindsFor(builderKey: string): MindsClient {
+  let c = clients.get(builderKey);
+  if (!c) {
+    c = createMindsClient({ builderApiKey: builderKey });
+    clients.set(builderKey, c);
   }
-  return _client;
+  return c;
 }
 
-export const STEWARD_EMAIL = process.env.MINDS_STEWARD_EMAIL ?? "rovin@anichess.com";
-
-/** Live mind list, cached for 60s per server process (demo-friendly). */
-let mindsCache: { at: number; items: BuilderMind[] } | null = null;
-export async function listMindsCached(): Promise<BuilderMind[]> {
-  if (mindsCache && Date.now() - mindsCache.at < 60_000) return mindsCache.items;
-  const items = await minds().listMinds();
-  mindsCache = { at: Date.now(), items };
+/** 60s mind-list cache per key (keyed by a stable prefix, not the whole secret). */
+const listCache = new Map<string, { at: number; items: BuilderMind[] }>();
+export async function listMindsFor(builderKey: string): Promise<BuilderMind[]> {
+  const cacheKey = builderKey.slice(-24);
+  const hit = listCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < 60_000) return hit.items;
+  const items = await mindsFor(builderKey).listMinds();
+  listCache.set(cacheKey, { at: Date.now(), items });
   return items;
 }
 
@@ -29,9 +33,8 @@ export type LiveMindStats = {
   skillsCount: number | null;
 };
 
-/** Best-effort live stats for a mind; nulls where a call fails. */
-export async function getLiveMindStats(mindId: string): Promise<LiveMindStats> {
-  const c = minds();
+export async function getLiveMindStats(builderKey: string, mindId: string): Promise<LiveMindStats> {
+  const c = mindsFor(builderKey);
   const startTime = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
   const [balance, usage, circle, skills] = await Promise.allSettled([
     c.getCognitionBalance(mindId),
@@ -61,14 +64,4 @@ export function trainingScore(opts: {
     : 0;
   const score = ageDays * 8 + (opts.usage30d ?? 0) * 0.04 + (opts.skillsCount ?? 0) * 40;
   return Math.min(1000, Math.round(score));
-}
-
-/** Sum cognition usage between two instants (hourly buckets). */
-export async function usageBetween(mindId: string, start: Date, end: Date): Promise<number> {
-  const res = await minds().getCognitionUsage(mindId, {
-    interval: "1h",
-    startTime: start.toISOString(),
-    endTime: end.toISOString(),
-  });
-  return res.items.reduce((s, i) => s + (i.value ?? 0), 0);
 }

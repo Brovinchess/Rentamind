@@ -30,13 +30,12 @@ npm run dev
 
 | Var | What |
 |---|---|
-| `MINDS_BUILDER_API_KEY` | HelloMinds Builder API key (steward session) |
-| `MINDS_HUMAN_ID` | Your humanId (also embedded in the key) |
-| `MINDS_STEWARD_EMAIL` | Steward email shown in the dashboard |
+| `MINDS_BUILDER_API_KEY` | Seed trainer's Builder key (used by scripts/seed-user.mjs) |
+| `SESSION_SECRET` | Signs session cookies + encrypts stored Builder keys |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
-| `APP_ACCESS_CODE` | Access code gating the whole app (leave unset to disable the gate) |
+
 
 ## Demo scope
 

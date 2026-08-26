@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Coins, Rocket, Store } from "lucide-react";
 import MindAvatar from "@/components/MindAvatar";
 import { getAllPointsEvents, getListings, getStudyLog, getTrainingPlans } from "@/lib/db";
-import { listMindsCached } from "@/lib/minds";
 
 export const dynamic = "force-dynamic";
 
@@ -48,11 +47,10 @@ const EARN = [
 ];
 
 export default async function Home() {
-  const [listings, plans, events, mindsList] = await Promise.all([
+  const [listings, plans, events] = await Promise.all([
     getListings().catch(() => []),
     getTrainingPlans().catch(() => []),
     getAllPointsEvents().catch(() => []),
-    listMindsCached().catch(() => []),
   ]);
 
   const stats = [
@@ -81,7 +79,8 @@ export default async function Home() {
 
   const mosaicSeeds = [
     ...plans.map((p) => p.persona_name),
-    ...mindsList.map((m) => m.name ?? "mind"),
+    ...listings.map((l) => l.mind_name),
+    "odyssey", "spiderman", "itachi", "jimmy", "sun-tzu", "athena",
   ].slice(0, 9);
   while (mosaicSeeds.length < 9) mosaicSeeds.push(`mind-${mosaicSeeds.length}`);
 

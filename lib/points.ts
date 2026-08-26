@@ -1,5 +1,4 @@
-import { getActiveRentals, getListing, updateRental } from "./db";
-import { minds } from "./minds";
+import { getActiveRentals, updateRental } from "./db";
 import type { LeaderboardRow, PointsEvent } from "./types";
 
 export const POINTS = {
@@ -56,17 +55,6 @@ export async function settle(): Promise<{ expired: number; settled: number; poin
 
   for (const rental of active) {
     if (new Date(rental.ends_at) > now) continue;
-    if (rental.circle_added) {
-      // Legacy circle-based rental — revoke the Circle access on expiry.
-      const listing = await getListing(rental.listing_id);
-      if (listing?.mind_id) {
-        try {
-          await minds().removeCircleMembers(listing.mind_id, { emails: [rental.renter_email] });
-        } catch {
-          // best-effort
-        }
-      }
-    }
     await updateRental(rental.id, { status: "expired" });
     expired++;
   }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import MindCard from "@/components/MindCard";
+import { getBuilderKeyForEmail } from "@/lib/auth";
 import { getListings } from "@/lib/db";
 import { getLiveMindStats, trainingScore } from "@/lib/minds";
 import type { Listing } from "@/lib/types";
@@ -11,7 +12,9 @@ const CATEGORIES = ["All", "Personas", "Experts", "Trading", "Sports", "Culture"
 async function scoreFor(listing: Listing): Promise<number> {
   if (!listing.mind_id) return listing.training_score;
   try {
-    const stats = await getLiveMindStats(listing.mind_id);
+    const key = await getBuilderKeyForEmail(listing.steward_email);
+    if (!key) return listing.training_score;
+    const stats = await getLiveMindStats(key, listing.mind_id);
     return trainingScore({
       createdAt: listing.created_at,
       usage30d: stats.usage30d,

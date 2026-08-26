@@ -105,3 +105,16 @@ create table if not exists ram_study_log (
   sent_at timestamptz not null default now()
 );
 alter table ram_study_log enable row level security;
+
+-- Multi-trainer: users sign in with their own Builder key
+create table if not exists ram_users (
+  human_id text primary key,
+  email text unique not null,
+  builder_key text not null,          -- AES-GCM encrypted at rest
+  display_name text,
+  created_at timestamptz not null default now(),
+  last_login_at timestamptz
+);
+alter table ram_users enable row level security;
+-- alter table ram_training_plans add column owner_email text;
+-- alter table ram_listings add column owner_human_id text;

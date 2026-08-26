@@ -24,6 +24,7 @@ export type Listing = {
   is_active: boolean;
   price_per_message: number;
   service_dna_sent_at: string | null;
+  owner_human_id: string | null;
   created_at: string;
 };
 

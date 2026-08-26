@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { getSessionEmail } from "@/lib/auth";
+import { getBuilderKeyForEmail, getSessionEmail } from "@/lib/auth";
 import { addPoints, createRental, getListing, getOrCreateWallet, getRentalsForListing, updateRental } from "@/lib/db";
-import { minds } from "@/lib/minds";
+import { mindsFor } from "@/lib/minds";
 import { POINTS } from "@/lib/points";
 
 /**
- * POST /api/rent — start a rental session.
- * v2 (proxied): the renter is NOT added to the Mind's Circle. Instead each rental
- * gets its own private conversation with the Mind, accessed only through our chat.
- * Payment model: renting is free to start; each message costs the listing's
- * price_per_message from the renter's cognition wallet (Season 0: free 1,000 grant).
+ * POST /api/rent — start a rental session for the signed-in user.
+ * The private conversation is opened through the LISTING OWNER's stored key
+ * (Minds only talk to their own steward's account), and the renter reaches it
+ * exclusively through our proxied chat.
  */
 export async function POST(req: Request) {
   try {
@@ -27,6 +26,14 @@ export async function POST(req: Request) {
     if (!listing.mind_id) {
       return NextResponse.json({ error: "This listing has no live Mind attached" }, { status: 400 });
     }
+    if (listing.steward_email === email) {
+      return NextResponse.json({ error: "That's your own Mind — chat with it for free in its training room" }, { status: 400 });
+    }
+
+    const ownerKey = await getBuilderKeyForEmail(listing.steward_email);
+    if (!ownerKey) {
+      return NextResponse.json({ error: "This Mind's trainer hasn't connected their account recently — try another listing" }, { status: 409 });
+    }
 
     const allRentals = await getRentalsForListing(listingId);
     const active = allRentals.filter((r) => r.status === "active");
@@ -35,7 +42,6 @@ export async function POST(req: Request) {
     }
     const existing = active.find((r) => r.renter_email === email);
     if (existing) {
-      // Already renting — return the existing session instead of double-charging points.
       const wallet = await getOrCreateWallet(email);
       return NextResponse.json({
         rentalId: existing.id,
@@ -48,7 +54,6 @@ export async function POST(req: Request) {
     const firstTime = !allRentals.some((r) => r.renter_email === email);
 
     const wallet = await getOrCreateWallet(email);
-
     const rental = await createRental({
       listing_id: listing.id,
       renter_email: email,
@@ -57,10 +62,9 @@ export async function POST(req: Request) {
       circle_added: false,
     });
 
-    // Private conversation for this rental — isolated from training and other renters.
     const alias = `ram-${listing.mind_id.slice(0, 8)}-${rental.id.slice(0, 8)}`;
     try {
-      await minds().ensureConversation(alias, listing.mind_id);
+      await mindsFor(ownerKey).ensureConversation(alias, listing.mind_id);
       await updateRental(rental.id, { conversation_alias: alias });
     } catch (e) {
       return NextResponse.json(

@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
+import { getAuthedUser } from "@/lib/auth";
 import {
   createTrainingPlan,
   getStudyLog,
   getTrainingPlan,
-  getTrainingPlans,
+  getTrainingPlansForOwner,
   updateTrainingPlan,
 } from "@/lib/db";
 import { ARCHETYPES, chunkSources, feedPrompt, identityPrompt, type ArchetypeKey, type Brief } from "@/lib/curriculum";
-import { listMindsCached, minds } from "@/lib/minds";
+import { listMindsFor, mindsFor } from "@/lib/minds";
 import { trainAlias } from "@/lib/study";
 
 export const maxDuration = 120;
 
-/** Best-effort: equip a web-search app from the Bazaar so the Mind can research. */
-async function equipSearchTool(mindId: string): Promise<string | null> {
-  const c = minds();
+/** Best-effort: equip a verified web-search app so the Mind can research. */
+async function equipSearchTool(builderKey: string, mindId: string): Promise<string | null> {
+  const c = mindsFor(builderKey);
   try {
     const isSearchApp = (name: unknown) => /tavily|perplexity|serp|web.?search/i.test(String(name ?? ""));
     const equipped = await c.listEquippedApps(mindId);
@@ -34,10 +35,12 @@ async function equipSearchTool(mindId: string): Promise<string | null> {
   return null;
 }
 
-/** GET /api/studio — all plans with recent study logs. */
+/** GET /api/studio — YOUR plans with recent study logs. */
 export async function GET() {
   try {
-    const plans = await getTrainingPlans();
+    const user = await getAuthedUser();
+    if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const plans = await getTrainingPlansForOwner(user.email);
     const out = await Promise.all(
       plans.map(async (p) => ({ ...p, log: await getStudyLog(p.id, 10).catch(() => []) })),
     );
@@ -47,9 +50,11 @@ export async function GET() {
   }
 }
 
-/** POST /api/studio — start a persona: identity + sources, then the auto-study loop takes over. */
+/** POST /api/studio — start a persona on one of YOUR Minds. */
 export async function POST(req: Request) {
   try {
+    const user = await getAuthedUser();
+    if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     const body = await req.json();
     const archetype = body.archetype as ArchetypeKey;
     if (!ARCHETYPES[archetype]) {
@@ -60,14 +65,14 @@ export async function POST(req: Request) {
     if (!mindId || !personaName?.trim() || !who?.trim()) {
       return NextResponse.json({ error: "mindId, personaName, and who are required" }, { status: 400 });
     }
-    const owned = await listMindsCached();
+    const owned = await listMindsFor(user.builderKey);
     const trainee = owned.find((m) => m.mindId === mindId);
     if (!trainee) {
       return NextResponse.json({ error: "That Mind isn't on your account" }, { status: 403 });
     }
-    const existing = await getTrainingPlans();
+    const existing = await getTrainingPlansForOwner(user.email);
     if (existing.some((p) => p.mind_id === mindId)) {
-      return NextResponse.json({ error: "This Mind already has a persona plan — pause or adjust it in the Studio" }, { status: 409 });
+      return NextResponse.json({ error: "This Mind already has a persona plan — adjust it below instead" }, { status: 409 });
     }
 
     const brief: Brief = {
@@ -77,16 +82,15 @@ export async function POST(req: Request) {
       sources: String(sources ?? "").slice(0, 6000),
     };
 
-    // Send identity + source material now (fire-and-forget; the Mind absorbs them).
     const alias = trainAlias(mindId);
-    const c = minds();
+    const c = mindsFor(user.builderKey);
     await c.ensureConversation(alias, mindId);
     await c.sendMessage({ alias, messageText: identityPrompt(archetype, brief) });
     const chunks = chunkSources(brief.sources);
     for (let i = 0; i < chunks.length; i++) {
       await c.sendMessage({ alias, messageText: feedPrompt(brief, chunks[i], i + 1, chunks.length) });
     }
-    const equippedTool = await equipSearchTool(mindId);
+    const equippedTool = await equipSearchTool(user.builderKey, mindId);
 
     const plan = await createTrainingPlan({
       mind_id: mindId,
@@ -94,8 +98,9 @@ export async function POST(req: Request) {
       archetype,
       persona_name: brief.personaName,
       brief: brief as unknown as Record<string, unknown>,
+      owner_email: user.email,
       study_frequency_hours: frequency,
-      next_study_at: new Date().toISOString(), // first study cycle fires on the next scheduler pass
+      next_study_at: new Date().toISOString(),
       is_studying: true,
     });
 
@@ -105,12 +110,16 @@ export async function POST(req: Request) {
   }
 }
 
-/** PATCH /api/studio — adjust a plan: frequency, pause/resume. */
+/** PATCH /api/studio — adjust YOUR plan: frequency, pause/resume. */
 export async function PATCH(req: Request) {
   try {
+    const user = await getAuthedUser();
+    if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     const { planId, frequencyHours, isStudying } = await req.json();
     const plan = planId ? await getTrainingPlan(planId) : null;
-    if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+    if (!plan || plan.owner_email !== user.email) {
+      return NextResponse.json({ error: "Plan not found on your account" }, { status: 404 });
+    }
 
     const patch: Record<string, unknown> = {};
     if (frequencyHours !== undefined) {

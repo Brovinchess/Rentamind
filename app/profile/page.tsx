@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import MindAvatar from "@/components/MindAvatar";
 import SignOutButton from "@/components/SignOutButton";
-import { getSessionEmail, isTrainer } from "@/lib/auth";
+import { getAuthedUser } from "@/lib/auth";
 import {
   getAllPointsEvents,
   getListing,
@@ -10,9 +10,9 @@ import {
   getOrCreateWallet,
   getPointsEvents,
   getRentalsByRenter,
-  getTrainingPlans,
+  getTrainingPlansForOwner,
 } from "@/lib/db";
-import { listMindsCached, STEWARD_EMAIL } from "@/lib/minds";
+import { listMindsFor } from "@/lib/minds";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +28,10 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ trainer?: string }>;
 }) {
-  const email = await getSessionEmail();
-  if (!email) redirect("/login?next=/profile");
-  const trainer = isTrainer(email);
-  const { trainer: trainerParam } = await searchParams;
+  const user = await getAuthedUser();
+  if (!user) redirect("/login?next=/profile");
+  const email = user.email;
+  await searchParams;
 
   const [allEvents, recent, wallet, myRentals] = await Promise.all([
     getAllPointsEvents().catch(() => []),
@@ -39,13 +39,11 @@ export default async function ProfilePage({
     getOrCreateWallet(email).catch(() => null),
     getRentalsByRenter(email).catch(() => []),
   ]);
-  const [mindsList, listings, plans] = trainer
-    ? await Promise.all([
-        listMindsCached().catch(() => []),
-        getListingsForSteward(STEWARD_EMAIL).catch(() => []),
-        getTrainingPlans().catch(() => []),
-      ])
-    : [[], [], []];
+  const [mindsList, listings, plans] = await Promise.all([
+    listMindsFor(user.builderKey).catch(() => []),
+    getListingsForSteward(email).catch(() => []),
+    getTrainingPlansForOwner(email).catch(() => []),
+  ]);
 
   const mine = allEvents.filter((e) => e.subject_email === email);
   const totalPoints = Math.round(mine.reduce((s, e) => s + Number(e.points), 0));
@@ -70,20 +68,14 @@ export default async function ProfilePage({
     <main className="container page narrow">
       <span className="eyebrow section-eyebrow">Profile</span>
 
-      {trainerParam === "required" ? (
-        <div className="notice" style={{ marginTop: 10 }}>
-          That page is for the trainer account. You&apos;re signed in as a renter — you can rent Minds,
-          chat with them, and farm points. Trainer sign-ups open after Season 0.
-        </div>
-      ) : null}
-
       <div className="card" style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
         <MindAvatar seed={email} size={72} radius={18} />
         <div style={{ flex: 1, minWidth: 220 }}>
-          <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>{trainer ? "Rovin" : email.split("@")[0]}</h2>
+          <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>{email.split("@")[0]}</h2>
           <div className="mono" style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{email}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-            {trainer ? <span className="pill pill-live">Trainer</span> : <span className="pill pill-cat">Renter</span>}
+            <span className="pill pill-live">Trainer</span>
+            <span className="pill pill-cat">Renter</span>
             <span className="pill pill-cat">Season 0</span>
           </div>
         </div>
@@ -98,14 +90,12 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      {trainer ? (
-        <div className="stat-grid" style={{ marginTop: 16 }}>
-          <div className="stat"><div className="k">Minds</div><div className="v">{mindsList.length}</div></div>
-          <div className="stat"><div className="k">In training</div><div className="v">{plans.length}</div></div>
-          <div className="stat"><div className="k">Study cycles</div><div className="v">{plans.reduce((s, p) => s + p.study_cycles, 0)}</div></div>
-          <div className="stat"><div className="k">Listed for rent</div><div className="v">{listings.filter((l) => l.is_active).length}</div></div>
-        </div>
-      ) : null}
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <div className="stat"><div className="k">Minds</div><div className="v">{mindsList.length}</div></div>
+        <div className="stat"><div className="k">In training</div><div className="v">{plans.length}</div></div>
+        <div className="stat"><div className="k">Study cycles</div><div className="v">{plans.reduce((s, p) => s + p.study_cycles, 0)}</div></div>
+        <div className="stat"><div className="k">Listed for rent</div><div className="v">{listings.filter((l) => l.is_active).length}</div></div>
+      </div>
 
       <h3 style={{ marginTop: 28 }}>Your cognition wallet</h3>
       <div className="stat-grid" style={{ marginTop: 10 }}>
@@ -172,12 +162,8 @@ export default async function ProfilePage({
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 24, flexWrap: "wrap" }}>
-        {trainer ? (
-          <>
-            <Link href="/my-minds" className="btn btn-outline btn-sm">My Minds</Link>
-            <Link href="/studio" className="btn btn-outline btn-sm">Training Studio</Link>
-          </>
-        ) : null}
+        <Link href="/my-minds" className="btn btn-outline btn-sm">My Minds</Link>
+        <Link href="/studio" className="btn btn-outline btn-sm">Training Studio</Link>
         <Link href="/rewards" className="btn btn-outline btn-sm">Leaderboard</Link>
       </div>
     </main>

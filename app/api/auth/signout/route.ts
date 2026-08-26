@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supaServer } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/session";
 
 export async function POST() {
-  const supa = await supaServer();
-  await supa.auth.signOut();
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, maxAge: 0, path: "/" });
+  return res;
 }

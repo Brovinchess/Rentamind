@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSessionEmail, isTrainer } from "@/lib/auth";
+import { getAuthedUser, getBuilderKeyForEmail } from "@/lib/auth";
 import { addPoints, getListing, getOrCreateWallet, getRental, spendFromWallet, updateRental } from "@/lib/db";
 import { looksLikeInjection, wrapClientMessage, type TaskMode } from "@/lib/envelope";
-import { listMindsCached, minds } from "@/lib/minds";
+import { listMindsFor, mindsFor } from "@/lib/minds";
 import { POINTS } from "@/lib/points";
 import type { Listing, Rental } from "@/lib/types";
 
@@ -15,7 +15,6 @@ function rentalAlias(mindId: string, rentalId: string) {
   return `ram-${mindId.slice(0, 8)}-${rentalId.slice(0, 8)}`;
 }
 
-/** Mind replies arrive as HTML; flatten to plain text for the chat bubbles. */
 function toPlainText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -31,24 +30,25 @@ function toPlainText(html: string): string {
 }
 
 type Resolved =
-  | { kind: "steward"; mindId: string; alias: string }
-  | { kind: "renter"; mindId: string; alias: string; rental: Rental; listing: Listing }
+  | { kind: "trainer"; mindId: string; alias: string; key: string }
+  | { kind: "renter"; mindId: string; alias: string; key: string; rental: Rental; listing: Listing }
   | { error: string; status: number };
 
 /**
- * Steward path: a mindId owned by the account — raw training channel.
- * Renter path: listingId + the rentalId issued at checkout — proxied service session.
+ * Trainer path: your own mindId — raw training channel via YOUR key.
+ * Renter path: listingId + your rentalId — proxied service session via the
+ * listing OWNER's stored key.
  */
 async function resolve(listingId: string | null, mindId: string | null, rentalId: string | null): Promise<Resolved> {
-  const sessionEmail = await getSessionEmail();
-  if (!sessionEmail) return { error: "Sign in required", status: 401 };
+  const user = await getAuthedUser();
+  if (!user) return { error: "Sign in required", status: 401 };
+
   if (mindId) {
-    if (!isTrainer(sessionEmail)) return { error: "Trainer account required", status: 403 };
-    const owned = await listMindsCached();
+    const owned = await listMindsFor(user.builderKey);
     if (!owned.some((m) => m.mindId === mindId)) {
-      return { error: "Not a live Mind on this account", status: 404 };
+      return { error: "That Mind isn't on your account", status: 404 };
     }
-    return { kind: "steward", mindId, alias: stewardAlias(mindId) };
+    return { kind: "trainer", mindId, alias: stewardAlias(mindId), key: user.builderKey };
   }
   if (listingId) {
     const listing = await getListing(listingId);
@@ -58,14 +58,16 @@ async function resolve(listingId: string | null, mindId: string | null, rentalId
     if (!rental || rental.listing_id !== listingId) {
       return { error: "Rental not found for this listing", status: 403 };
     }
-    if (rental.renter_email !== sessionEmail) {
+    if (rental.renter_email !== user.email) {
       return { error: "This rental belongs to a different account", status: 403 };
     }
     if (rental.status !== "active" || new Date(rental.ends_at) <= new Date()) {
       return { error: "This rental has ended — rent the Mind again to keep chatting", status: 403 };
     }
+    const ownerKey = await getBuilderKeyForEmail(listing.steward_email);
+    if (!ownerKey) return { error: "This Mind's trainer is unavailable right now", status: 409 };
     const alias = rental.conversation_alias ?? rentalAlias(listing.mind_id, rental.id);
-    return { kind: "renter", mindId: listing.mind_id, alias, rental, listing };
+    return { kind: "renter", mindId: listing.mind_id, alias, key: ownerKey, rental, listing };
   }
   return { error: "listingId or mindId required", status: 400 };
 }
@@ -81,7 +83,7 @@ export async function GET(req: Request) {
     );
     if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
 
-    const c = minds();
+    const c = mindsFor(r.key);
     await c.ensureConversation(r.alias, r.mindId);
     const rows = await c.getHistory(r.alias, { limit: 50 });
     rows.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
@@ -103,7 +105,6 @@ export async function GET(req: Request) {
       session,
       messages: rows.map((m) => ({
         fingerprint: m.fingerprint,
-        // Hide the service envelope from the transcript renters see.
         text: toPlainText(m.messageText ?? "").replace(/^\[RENTAL SESSION[^\]]*\][ \t\r\n]*/, ""),
         fromMind: m.senderType !== 1,
         at: m.createdAt,
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
     if (r.kind === "renter") {
       if (looksLikeInjection(outgoing)) {
         return NextResponse.json(
-          { error: "That message looks like an attempt to retrain the Mind. Rentals are for asking, drafting, and predicting — training is steward-only." },
+          { error: "That message looks like an attempt to retrain the Mind. Rentals are for asking, drafting, and predicting — training is trainer-only." },
           { status: 400 },
         );
       }
@@ -146,12 +147,11 @@ export async function POST(req: Request) {
       outgoing = wrapClientMessage(mode, outgoing);
     }
 
-    const c = minds();
+    const c = mindsFor(r.key);
     await c.ensureConversation(r.alias, r.mindId);
     const before = await c.getLatestHistoryFingerprint(r.alias);
     await c.sendMessage({ alias: r.alias, messageText: outgoing });
 
-    // Charge + points once the message is actually accepted.
     let walletBalance: number | null = null;
     if (r.kind === "renter" && price > 0) {
       walletBalance = await spendFromWallet(r.rental.renter_email, price);

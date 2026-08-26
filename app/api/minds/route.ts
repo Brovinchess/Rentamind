@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { minds } from "@/lib/minds";
+import { getAuthedUser } from "@/lib/auth";
+import { listMindsFor } from "@/lib/minds";
 
-/** GET /api/minds — uncached live list, used by the launch flow to detect a newly awakened Mind. */
+/** GET /api/minds — the signed-in user's live Minds (uncached, for launch detection). */
 export async function GET() {
   try {
-    const items = await minds().listMinds();
+    const user = await getAuthedUser();
+    if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const items = await listMindsFor(user.builderKey);
     return NextResponse.json({
       minds: items.map((m) => ({
         mindId: m.mindId,

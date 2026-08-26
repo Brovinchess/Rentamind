@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import RentPanel from "@/components/RentPanel";
 import MindAvatar from "@/components/MindAvatar";
 import { LiveBadge, Stars } from "@/components/MindCard";
+import { getBuilderKeyForEmail } from "@/lib/auth";
 import { getListing, getRentalsForListing } from "@/lib/db";
 import { getLiveMindStats, trainingScore, type LiveMindStats } from "@/lib/minds";
 
@@ -15,8 +16,9 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   let stats: LiveMindStats | null = null;
   let score = listing.training_score;
-  if (listing.mind_id) {
-    stats = await getLiveMindStats(listing.mind_id);
+  const ownerKey = listing.mind_id ? await getBuilderKeyForEmail(listing.steward_email) : null;
+  if (listing.mind_id && ownerKey) {
+    stats = await getLiveMindStats(ownerKey, listing.mind_id);
     score = trainingScore({
       createdAt: listing.created_at,
       usage30d: stats.usage30d,

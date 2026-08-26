@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 
-const TRAINER_EMAIL = (process.env.MINDS_STEWARD_EMAIL ?? "rovin@anichess.com").toLowerCase();
+const SESSION_COOKIE = "ram_session";
 
-/** Routes anyone can see (browsing is open; acting requires login). */
+/** Routes anyone can see; acting requires signing in with a Builder key. */
 function isOpen(pathname: string, method: string): boolean {
   return (
     pathname === "/" ||
@@ -11,7 +10,6 @@ function isOpen(pathname: string, method: string): boolean {
     pathname.startsWith("/mind/") ||
     pathname === "/rewards" ||
     pathname === "/login" ||
-    pathname === "/auth/callback" ||
     pathname.startsWith("/api/auth/") ||
     (pathname === "/api/settle" && method === "GET") || // cron, self-authenticated
     pathname.startsWith("/_next") ||
@@ -19,68 +17,45 @@ function isOpen(pathname: string, method: string): boolean {
   );
 }
 
-/** Routes only the trainer account may use. */
-function isTrainerOnly(pathname: string, method: string): boolean {
-  return (
-    pathname === "/my-minds" ||
-    pathname === "/studio" ||
-    pathname === "/launch" ||
-    pathname.startsWith("/talk/") ||
-    pathname.startsWith("/api/listings") ||
-    pathname.startsWith("/api/studio") ||
-    pathname.startsWith("/api/minds") ||
-    (pathname === "/api/settle" && method === "POST")
-  );
+/** Verify the HMAC session cookie with WebCrypto (works in any runtime). */
+async function verifySessionToken(token: string | undefined, secret: string): Promise<boolean> {
+  if (!token) return false;
+  const [payload, mac] = token.split(".");
+  if (!payload || !mac) return false;
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+    const expected = Buffer.from(sig).toString("base64url");
+    if (expected !== mac) return false;
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return typeof data.x === "number" && data.x > Date.now() && !!data.h && !!data.e;
+  } catch {
+    return false;
+  }
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const method = request.method;
+  if (isOpen(pathname, request.method)) return NextResponse.next();
 
-  if (isOpen(pathname, method)) return NextResponse.next();
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return NextResponse.next(); // auth disabled without a secret (dev safety)
 
-  let response = NextResponse.next({ request });
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (list) => {
-          list.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          list.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
-      },
-    },
-  );
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const email = user?.email?.toLowerCase() ?? null;
+  const ok = await verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value, secret);
+  if (ok) return NextResponse.next();
 
-  const withCookies = (res: NextResponse) => {
-    response.cookies.getAll().forEach((c) => res.cookies.set(c));
-    return res;
-  };
-
-  if (!email) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-    }
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
-    return withCookies(NextResponse.redirect(loginUrl));
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
-
-  if (isTrainerOnly(pathname, method) && email !== TRAINER_EMAIL) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Trainer account required" }, { status: 403 });
-    }
-    return withCookies(NextResponse.redirect(new URL("/profile?trainer=required", request.url)));
-  }
-
-  return response;
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

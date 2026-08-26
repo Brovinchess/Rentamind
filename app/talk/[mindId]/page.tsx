@@ -2,18 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
 import MindAvatar from "@/components/MindAvatar";
-import { getLiveMindStats, listMindsCached, trainingScore } from "@/lib/minds";
+import { getAuthedUser } from "@/lib/auth";
+import { getLiveMindStats, listMindsFor, trainingScore } from "@/lib/minds";
 
 export const dynamic = "force-dynamic";
 
 /** Steward chat room — talk to (and train) any Mind on your account, listed or not. */
 export default async function TalkPage({ params }: { params: Promise<{ mindId: string }> }) {
   const { mindId } = await params;
-  const owned = await listMindsCached().catch(() => []);
+  const user = await getAuthedUser();
+  if (!user) notFound();
+  const owned = await listMindsFor(user.builderKey).catch(() => []);
   const mind = owned.find((m) => m.mindId === mindId);
   if (!mind) notFound();
 
-  const stats = await getLiveMindStats(mindId);
+  const stats = await getLiveMindStats(user.builderKey, mindId);
   const score = trainingScore({
     createdAt: mind.createdAt,
     usage30d: stats.usage30d,
