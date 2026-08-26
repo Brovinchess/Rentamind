@@ -63,11 +63,11 @@ export default function RentPanel({
         <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
           Your cognition balance: <b>{Math.floor(result.walletBalance).toLocaleString()}</b> · each
           message costs <b>{result.pricePerMessage}</b>. You earn points for every cognition you
-          spend; the steward earns points too.
+          spend; the trainer earns points too.
         </p>
         {!result.alreadyRenting ? (
           <p style={{ margin: 0, fontSize: "0.9rem" }}>
-            <b>+{result.points.renter} points</b> for you · +{result.points.steward} for the steward.
+            <b>+{result.points.renter} points</b> for you · +{result.points.steward} for the trainer.
           </p>
         ) : null}
         <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.8rem" }}>
@@ -77,7 +77,7 @@ export default function RentPanel({
           <Link className="btn btn-primary btn-sm" href={`/chat/${listingId}?rental=${result.rentalId}`}>
             Start chatting
           </Link>
-          <Link className="btn btn-ghost btn-sm" href="/points">View your points</Link>
+          <Link className="btn btn-ghost btn-sm" href="/rewards">View your rewards</Link>
         </div>
       </div>
     );

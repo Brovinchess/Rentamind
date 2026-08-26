@@ -10,7 +10,7 @@ const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], varia
 export const metadata: Metadata = {
   title: "Rent a Mind",
   description:
-    "Rent trained Minds from their stewards. Built on HelloMinds by Animoca Brands — demo concept.",
+    "Train Minds into personas, rent them out, farm rewards. Built on HelloMinds by Animoca Brands — demo concept.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,10 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Rent a Mind <span className="beta">DEMO</span>
             </Link>
             <nav className="nav">
-              <Link href="/">Marketplace</Link>
-              <Link href="/dashboard">Steward Dashboard</Link>
+              <Link href="/marketplace">Marketplace</Link>
+              <Link href="/my-minds">My Minds</Link>
               <Link href="/studio">Training Studio</Link>
-              <Link href="/points">Points</Link>
+              <Link href="/rewards">Rewards</Link>
             </nav>
             <Link href="/launch" className="header-cta">
               Launch a Mind

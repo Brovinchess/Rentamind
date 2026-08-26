@@ -44,7 +44,7 @@ export default function LaunchPage() {
       </div>
 
       <p style={{ color: "var(--muted)", fontSize: "0.88rem" }}>
-        Already have Minds? They&apos;re all in your <Link href="/dashboard" style={{ color: "var(--brand)", fontWeight: 700 }}>dashboard</Link> with
+        Already have Minds? They&apos;re all in your <Link href="/my-minds" style={{ color: "var(--brand)", fontWeight: 700 }}>My Minds</Link> with
         a training room each.
       </p>
     </main>

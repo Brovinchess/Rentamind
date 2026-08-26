@@ -1,91 +1,106 @@
 import Link from "next/link";
-import MindCard from "@/components/MindCard";
-import { getListings } from "@/lib/db";
-import { getLiveMindStats, trainingScore } from "@/lib/minds";
-import type { Listing } from "@/lib/types";
+import { BookOpen, Coins, Rocket, Store } from "lucide-react";
+import { getAllPointsEvents, getListings, getTrainingPlans } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = ["All", "Personas", "Experts", "Trading", "Sports", "Culture"];
+const JOURNEY = [
+  {
+    icon: Rocket,
+    title: "Launch a Mind",
+    body: "Create a Mind on HelloMinds in under a minute. It appears here automatically.",
+    href: "/launch",
+    cta: "Launch",
+  },
+  {
+    icon: BookOpen,
+    title: "Train it into a persona",
+    body: "Tell it who to become — Hulk, an F1 champion, a market expert. It studies on repeat, on your schedule. Every study cycle earns you points.",
+    href: "/studio",
+    cta: "Training Studio",
+  },
+  {
+    icon: Store,
+    title: "Rent it out",
+    body: "List your trained Mind on the marketplace. Renters pay cognition per message to talk to it — every rental earns you points.",
+    href: "/my-minds",
+    cta: "My Minds",
+  },
+  {
+    icon: Coins,
+    title: "Farm rewards",
+    body: "Training, renting out, and renting other people's Minds all earn points toward a future airdrop. Climb the leaderboard.",
+    href: "/rewards",
+    cta: "Rewards",
+  },
+];
 
-async function scoreFor(listing: Listing): Promise<number> {
-  if (!listing.mind_id) return listing.training_score;
-  try {
-    const stats = await getLiveMindStats(listing.mind_id);
-    return trainingScore({
-      createdAt: listing.created_at,
-      usage30d: stats.usage30d,
-      skillsCount: stats.skillsCount,
-    });
-  } catch {
-    return listing.training_score;
-  }
-}
-
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ cat?: string }>;
-}) {
-  const { cat = "All" } = await searchParams;
-  let listings: Listing[] = [];
-  let dbError: string | null = null;
-  try {
-    listings = await getListings();
-  } catch (e) {
-    dbError = e instanceof Error ? e.message : String(e);
-  }
-  const filtered = cat === "All" ? listings : listings.filter((l) => l.category === cat);
-  const scores = await Promise.all(filtered.map(scoreFor));
+export default async function Home() {
+  const [listings, plans, events] = await Promise.all([
+    getListings().catch(() => []),
+    getTrainingPlans().catch(() => []),
+    getAllPointsEvents().catch(() => []),
+  ]);
+  const stats = [
+    { k: "Minds in training", v: plans.length },
+    { k: "Study cycles run", v: plans.reduce((s, p) => s + p.study_cycles, 0) },
+    { k: "Minds for rent", v: listings.length },
+    { k: "Points issued", v: Math.round(events.reduce((s, e) => s + Number(e.points), 0)).toLocaleString() },
+  ];
 
   return (
     <main>
       <div className="hero">
         <div className="container">
-          <span className="eyebrow">A marketplace for trained Minds</span>
-          <h1>Someone already trained the Mind you need.</h1>
+          <span className="eyebrow">Season 0 · points toward a future airdrop</span>
+          <h1>Train a Mind. Rent it out. Farm rewards.</h1>
           <p>
-            Stewards train their Minds into personas and specialists. Rent one and it answers you,
-            drafts in its voice, and predicts what its persona would do — every cognition you spend
-            earns points for both sides.
+            Turn a HelloMinds Mind into a persona anyone would pay to talk to — it studies
+            automatically until it thinks and talks like the real thing. Renters pay cognition per
+            message, and every bit of activity earns points for both sides.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <a href="#browse" className="btn btn-primary">Browse Minds</a>
-            <Link href="/dashboard" className="btn" style={{ border: "1.5px solid rgba(255,255,255,.4)", color: "#fff" }}>
-              Rent out yours
+            <Link href="/marketplace" className="btn btn-primary">Browse Minds for rent</Link>
+            <Link href="/studio" className="btn" style={{ border: "1.5px solid rgba(255,255,255,.4)", color: "#fff" }}>
+              Start training yours
             </Link>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28 }}>
+            {stats.map((s) => (
+              <div key={s.k} style={{ border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, padding: "10px 16px" }}>
+                <div style={{ fontWeight: 800, fontSize: "1.15rem" }}>{s.v}</div>
+                <div className="mono" style={{ fontSize: "0.62rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#c3cdea" }}>{s.k}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <section className="page container" id="browse">
-        <span className="eyebrow section-eyebrow">The Mindshelf</span>
-        <h2 className="section-title">Minds for rent</h2>
-
-        {dbError ? (
-          <div className="notice">
-            Database not ready: {dbError}. Run <code className="mono">supabase/schema.sql</code> in
-            the Supabase SQL editor, then <code className="mono">npm run seed</code>.
-          </div>
-        ) : null}
-
-        <div className="filters">
-          {CATEGORIES.map((c) => (
-            <Link key={c} href={c === "All" ? "/" : `/?cat=${c}`} className={c === cat ? "active" : ""}>
-              {c}
-            </Link>
+      <section className="page container narrow">
+        <span className="eyebrow section-eyebrow">How to farm points</span>
+        <h2 className="section-title">Four steps, all of them earn</h2>
+        <ol className="journey">
+          {JOURNEY.map((s) => (
+            <li key={s.title}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <b>{s.title}</b>
+                  <div className="sub">{s.body}</div>
+                </div>
+                <Link href={s.href} className="btn btn-outline btn-sm" style={{ flexShrink: 0 }}>
+                  {s.cta}
+                </Link>
+              </div>
+            </li>
           ))}
-        </div>
+        </ol>
 
-        {filtered.length === 0 && !dbError ? (
-          <div className="empty">No Minds listed in this category yet.</div>
-        ) : (
-          <div className="grid">
-            {filtered.map((l, i) => (
-              <MindCard key={l.id} listing={l} score={scores[i]} />
-            ))}
-          </div>
-        )}
+        <div className="notice" style={{ marginTop: 28 }}>
+          <b>Renters farm too:</b> renting someone else&apos;s Mind earns you 1 point per cognition you
+          spend — new renters start with 1,000 cognition free. Ask it anything, have it draft in its
+          persona&apos;s voice, or ask what its persona would do next.{" "}
+          <Link href="/marketplace" style={{ color: "var(--brand)", fontWeight: 700 }}>Find a Mind →</Link>
+        </div>
       </section>
     </main>
   );

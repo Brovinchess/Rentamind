@@ -22,8 +22,8 @@ export default async function TalkPage({ params }: { params: Promise<{ mindId: s
 
   return (
     <main className="container page narrow">
-      <Link href="/dashboard" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-        ← Back to dashboard
+      <Link href="/my-minds" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+        ← Back to My Minds
       </Link>
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0 4px", flexWrap: "wrap" }}>
         <div className="avatar"><MindIcon hint="brain" size={26} /></div>

@@ -27,7 +27,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="container page narrow" style={{ paddingTop: 28 }}>
-      <Link href="/" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>← Back to the Mindshelf</Link>
+      <Link href="/marketplace" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>← Back to Marketplace</Link>
 
       <div className="detail-hero" style={{ marginTop: 18 }}>
         <div className="avatar"><MindIcon hint={listing.emoji} size={34} /></div>
@@ -38,7 +38,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             {listing.label ? <span className="pill pill-label">{listing.label}</span> : null}
           </div>
           <p className="mono" style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "4px 0" }}>
-            @{listing.mind_name} · steward {listing.steward_name} · {listing.category}
+            @{listing.mind_name} · trainer {listing.steward_name} · {listing.category}
           </p>
           <Stars rating={Number(listing.rating)} count={listing.rating_count} />
         </div>
@@ -98,7 +98,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       <div className="notice" style={{ marginTop: 26 }}>
         <b>How renting works:</b> you get a private chat session with the live, trained Mind. Each
         message costs cognition from your balance, and every cognition you spend earns you points.
-        Your session can&apos;t change how the Mind behaves — only its steward can train it.
+        Your session can&apos;t change how the Mind behaves — only its trainer can train it.
       </div>
     </main>
   );
