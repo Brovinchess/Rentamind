@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 type Stage = "form" | "processing" | "done" | "error";
 
@@ -26,8 +27,9 @@ export default function RentPanel({
   minDays: number;
   isLive: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [stage, setStage] = useState<Stage>("form");
-  const [email, setEmail] = useState("");
   const [days, setDays] = useState(Math.max(7, minDays));
   const [error, setError] = useState("");
   const [result, setResult] = useState<RentResult | null>(null);
@@ -39,9 +41,13 @@ export default function RentPanel({
       const res = await fetch("/api/rent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId, renterEmail: email, days }),
+        body: JSON.stringify({ listingId, days }),
       });
       const data = await res.json();
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(pathname)}`);
+        return;
+      }
       if (!res.ok) throw new Error(data.error ?? "Rental failed");
       setResult(data);
       setStage("done");
@@ -95,16 +101,6 @@ export default function RentPanel({
         <p style={{ color: "var(--danger)", fontSize: "0.85rem", margin: "0 0 8px" }}>{error}</p>
       ) : null}
       <div className="field">
-        <label htmlFor="renter-email">Your email</label>
-        <input
-          id="renter-email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div className="field">
         <label htmlFor="rent-days">Access period</label>
         <select id="rent-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
           {[3, 7, 14, 30].filter((d) => d >= minDays).map((d) => (
@@ -119,7 +115,7 @@ export default function RentPanel({
       ) : null}
       <button
         className="btn btn-primary"
-        disabled={!/.+@.+\..+/.test(email) || stage === "processing" || !isLive}
+        disabled={stage === "processing" || !isLive}
         onClick={rent}
       >
         {stage === "processing" ? "Opening your session…" : "Start renting — free"}

@@ -3,6 +3,7 @@ import { Manrope, Space_Mono } from "next/font/google";
 import Link from "next/link";
 import { Brain } from "lucide-react";
 import MindAvatar from "@/components/MindAvatar";
+import { getSessionEmail, isTrainer } from "@/lib/auth";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
     "Train Minds into personas, rent them out, farm rewards. Built on HelloMinds by Animoca Brands — demo concept.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const email = await getSessionEmail();
+  const trainer = isTrainer(email);
+
   return (
     <html lang="en">
       <body className={`${manrope.variable} ${spaceMono.variable}`}>
@@ -26,16 +30,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <nav className="nav">
               <Link href="/marketplace">Marketplace</Link>
-              <Link href="/my-minds">My Minds</Link>
-              <Link href="/studio">Training Studio</Link>
+              {trainer ? <Link href="/my-minds">My Minds</Link> : null}
+              {trainer ? <Link href="/studio">Training Studio</Link> : null}
               <Link href="/rewards">Rewards</Link>
             </nav>
-            <Link href="/launch" className="header-cta">
-              Launch a Mind
-            </Link>
-            <Link href="/profile" className="header-profile" title="Profile" aria-label="Profile">
-              <MindAvatar seed="rovin@anichess.com" size={34} radius={17} />
-            </Link>
+            {trainer ? (
+              <Link href="/launch" className="header-cta">
+                Launch a Mind
+              </Link>
+            ) : (
+              <Link href="/marketplace" className="header-cta">
+                Rent a Mind
+              </Link>
+            )}
+            {email ? (
+              <Link href="/profile" className="header-profile" title="Profile" aria-label="Profile">
+                <MindAvatar seed={email} size={34} radius={17} />
+              </Link>
+            ) : (
+              <Link href="/login" className="nav" style={{ color: "#c3cdea", fontWeight: 700, fontSize: "0.9rem" }}>
+                Sign in
+              </Link>
+            )}
           </div>
         </header>
         {children}

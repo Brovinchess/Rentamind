@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionEmail } from "@/lib/auth";
 import { addPoints, createRental, getListing, getOrCreateWallet, getRentalsForListing, updateRental } from "@/lib/db";
 import { minds } from "@/lib/minds";
 import { POINTS } from "@/lib/points";
@@ -12,11 +13,12 @@ import { POINTS } from "@/lib/points";
  */
 export async function POST(req: Request) {
   try {
-    const { listingId, renterEmail, days } = await req.json();
-    const email = String(renterEmail ?? "").trim().toLowerCase();
+    const email = await getSessionEmail();
+    if (!email) return NextResponse.json({ error: "Sign in to rent" }, { status: 401 });
+    const { listingId, days } = await req.json();
     const nDays = Math.max(1, Math.min(30, Number(days) || 7));
-    if (!listingId || !/.+@.+\..+/.test(email)) {
-      return NextResponse.json({ error: "listingId and a valid renterEmail are required" }, { status: 400 });
+    if (!listingId) {
+      return NextResponse.json({ error: "listingId required" }, { status: 400 });
     }
     const listing = await getListing(listingId);
     if (!listing || !listing.is_active) {

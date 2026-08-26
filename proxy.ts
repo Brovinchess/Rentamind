@@ -1,33 +1,86 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-const COOKIE = "ram_access";
+const TRAINER_EMAIL = (process.env.MINDS_STEWARD_EMAIL ?? "rovin@anichess.com").toLowerCase();
 
-/** Access gate: the whole app requires the access code (QA finding C1).
- *  /gate and /api/gate stay open so visitors can enter the code. */
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const open =
-    pathname === "/gate" ||
-    pathname === "/api/gate" ||
-    // Cron trigger authenticates itself with CRON_SECRET inside the route
-    (pathname === "/api/settle" && request.method === "GET") ||
+/** Routes anyone can see (browsing is open; acting requires login). */
+function isOpen(pathname: string, method: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/marketplace" ||
+    pathname.startsWith("/mind/") ||
+    pathname === "/rewards" ||
+    pathname === "/login" ||
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/api/auth/") ||
+    (pathname === "/api/settle" && method === "GET") || // cron, self-authenticated
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico";
-  if (open) return NextResponse.next();
+    pathname === "/favicon.ico"
+  );
+}
 
-  const expected = process.env.APP_ACCESS_CODE;
-  if (!expected) return NextResponse.next(); // gate disabled when no code configured
+/** Routes only the trainer account may use. */
+function isTrainerOnly(pathname: string, method: string): boolean {
+  return (
+    pathname === "/my-minds" ||
+    pathname === "/studio" ||
+    pathname === "/launch" ||
+    pathname.startsWith("/talk/") ||
+    pathname.startsWith("/api/listings") ||
+    pathname.startsWith("/api/studio") ||
+    pathname.startsWith("/api/minds") ||
+    (pathname === "/api/settle" && method === "POST")
+  );
+}
 
-  const cookie = request.cookies.get(COOKIE)?.value;
-  if (cookie === expected) return NextResponse.next();
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const method = request.method;
 
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "Access code required" }, { status: 401 });
+  if (isOpen(pathname, method)) return NextResponse.next();
+
+  let response = NextResponse.next({ request });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (list) => {
+          list.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          list.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    },
+  );
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email?.toLowerCase() ?? null;
+
+  const withCookies = (res: NextResponse) => {
+    response.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  };
+
+  if (!email) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
+    return withCookies(NextResponse.redirect(loginUrl));
   }
-  const gateUrl = new URL("/gate", request.url);
-  gateUrl.searchParams.set("next", pathname);
-  return NextResponse.redirect(gateUrl);
+
+  if (isTrainerOnly(pathname, method) && email !== TRAINER_EMAIL) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Trainer account required" }, { status: 403 });
+    }
+    return withCookies(NextResponse.redirect(new URL("/profile?trainer=required", request.url)));
+  }
+
+  return response;
 }
 
 export const config = {

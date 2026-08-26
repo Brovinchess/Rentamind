@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionEmail, isTrainer } from "@/lib/auth";
 import { addPoints, getListing, getOrCreateWallet, getRental, spendFromWallet, updateRental } from "@/lib/db";
 import { looksLikeInjection, wrapClientMessage, type TaskMode } from "@/lib/envelope";
 import { listMindsCached, minds } from "@/lib/minds";
@@ -39,7 +40,10 @@ type Resolved =
  * Renter path: listingId + the rentalId issued at checkout — proxied service session.
  */
 async function resolve(listingId: string | null, mindId: string | null, rentalId: string | null): Promise<Resolved> {
+  const sessionEmail = await getSessionEmail();
+  if (!sessionEmail) return { error: "Sign in required", status: 401 };
   if (mindId) {
+    if (!isTrainer(sessionEmail)) return { error: "Trainer account required", status: 403 };
     const owned = await listMindsCached();
     if (!owned.some((m) => m.mindId === mindId)) {
       return { error: "Not a live Mind on this account", status: 404 };
@@ -53,6 +57,9 @@ async function resolve(listingId: string | null, mindId: string | null, rentalId
     const rental = await getRental(rentalId).catch(() => null);
     if (!rental || rental.listing_id !== listingId) {
       return { error: "Rental not found for this listing", status: 403 };
+    }
+    if (rental.renter_email !== sessionEmail) {
+      return { error: "This rental belongs to a different account", status: 403 };
     }
     if (rental.status !== "active" || new Date(rental.ends_at) <= new Date()) {
       return { error: "This rental has ended — rent the Mind again to keep chatting", status: 403 };

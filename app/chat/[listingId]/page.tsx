@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
 import MindAvatar from "@/components/MindAvatar";
+import { getSessionEmail } from "@/lib/auth";
 import { getListing, getRental } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -15,15 +16,17 @@ export default async function ChatPage({
 }) {
   const { listingId } = await params;
   const { rental: rentalId } = await searchParams;
+  const sessionEmail = await getSessionEmail();
+  if (!sessionEmail) redirect(`/login?next=${encodeURIComponent(`/chat/${listingId}${rentalId ? `?rental=${rentalId}` : ""}`)}`);
   const listing = await getListing(listingId).catch(() => null);
   if (!listing) notFound();
 
-  // Rental gate: chat requires the rental token issued at checkout,
-  // for an active, unexpired rental of this listing.
+  // Rental gate: the rental must exist, be active, and belong to the signed-in account.
   const rental = rentalId ? await getRental(rentalId).catch(() => null) : null;
   const rentalValid =
     !!rental &&
     rental.listing_id === listing.id &&
+    rental.renter_email === sessionEmail &&
     rental.status === "active" &&
     new Date(rental.ends_at) > new Date();
 
@@ -53,7 +56,7 @@ export default async function ChatPage({
         <>
           <ChatBox listingId={listing.id} rentalId={rental.id} />
           <p style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
-            Renting as <b>{rental.renter_email}</b>. Pick a mode — <b>Ask</b> a question,
+            Pick a mode — <b>Ask</b> a question,
             <b> Draft</b> content in its voice, or <b>Predict</b> what the persona would do.
             Replies can take a minute or two; it&apos;s reasoning with real cognition.
           </p>
