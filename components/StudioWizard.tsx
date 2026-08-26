@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pause, Play } from "lucide-react";
+import FrequencySlider from "@/components/FrequencySlider";
 import MindAvatar from "@/components/MindAvatar";
 
 type MindOpt = { mindId: string; name: string };
@@ -28,13 +29,18 @@ const ARCHETYPES = [
   { key: "original", label: "Original Character", note: "your invention" },
 ];
 
-const FREQUENCIES = [
-  { hours: 1, label: "Every hour — fast, burns the most" },
-  { hours: 3, label: "Every 3 hours" },
-  { hours: 6, label: "Every 6 hours" },
-  { hours: 12, label: "Twice a day" },
-  { hours: 24, label: "Once a day — steady" },
-];
+function PlanFrequency({ hours, disabled, onCommit }: { hours: number; disabled?: boolean; onCommit: (h: number) => void }) {
+  const [value, setValue] = useState(hours);
+  return (
+    <FrequencySlider
+      compact
+      value={value}
+      disabled={disabled}
+      onChange={setValue}
+      onCommit={(h) => { if (h !== hours) onCommit(h); }}
+    />
+  );
+}
 
 export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans: PlanRow[] }) {
   const router = useRouter();
@@ -109,21 +115,12 @@ export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans
             )}
             <span className="score" style={{ marginLeft: "auto" }}>{p.cycles} study cycles</span>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <label htmlFor={`freq-${p.id}`} className="mono" style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-              STUDY EVERY
-            </label>
-            <select
-              id={`freq-${p.id}`}
-              value={p.frequencyHours}
+          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <PlanFrequency
+              hours={p.frequencyHours}
               disabled={busy}
-              onChange={(e) => patchPlan(p.id, { frequencyHours: Number(e.target.value) })}
-              style={{ border: "1.5px solid var(--line)", borderRadius: 8, padding: "5px 8px", fontSize: "0.85rem" }}
-            >
-              {FREQUENCIES.map((f) => (
-                <option key={f.hours} value={f.hours}>{f.hours}h</option>
-              ))}
-            </select>
+              onCommit={(h) => patchPlan(p.id, { frequencyHours: h })}
+            />
             <button
               className="btn btn-outline btn-sm"
               disabled={busy}
@@ -219,10 +216,11 @@ export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans
             value={form.sources} onChange={(e) => setForm({ ...form, sources: e.target.value })} />
         </div>
         <div className="field">
-          <label htmlFor="sw-freq">How often should it study?</label>
-          <select id="sw-freq" value={form.frequencyHours} onChange={(e) => setForm({ ...form, frequencyHours: Number(e.target.value) })}>
-            {FREQUENCIES.map((f) => <option key={f.hours} value={f.hours}>{f.label}</option>)}
-          </select>
+          <label>How often should it study?</label>
+          <FrequencySlider
+            value={form.frequencyHours}
+            onChange={(h) => setForm({ ...form, frequencyHours: h })}
+          />
         </div>
         <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 10px" }}>
           More frequent study = the Mind learns the persona faster and you earn training points faster —
