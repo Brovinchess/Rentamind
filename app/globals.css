@@ -340,3 +340,8 @@ td { font-variant-numeric: tabular-nums; }
 
 .header-profile { display: inline-flex; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); transition: border-color 0.15s; }
 .header-profile:hover { border-color: var(--accent); }
+
+/* ── legal pages ── */
+.legal h3 { margin-top: 26px; }
+.legal p, .legal li { max-width: 70ch; font-size: 0.95rem; }
+.legal ul { padding-left: 20px; display: grid; gap: 6px; }

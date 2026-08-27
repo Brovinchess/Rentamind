@@ -56,13 +56,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         {children}
         <footer className="footer">
-          <div className="container">
-            Rent a Mind — concept demo by Rovin, built on{" "}
-            <a href="https://hellominds.ai" style={{ textDecoration: "underline" }}>
-              HelloMinds
-            </a>{" "}
-            by Animoca Brands. Not an official HelloMinds product. Persona Minds are simulations —
-            parody, not affiliation. Nothing here is financial or medical advice.
+          <div className="container" style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <Link href="/terms" style={{ fontWeight: 700, color: "var(--brand)" }}>Terms of Use</Link>
+              <Link href="/privacy" style={{ fontWeight: 700, color: "var(--brand)" }}>Privacy Policy</Link>
+            </div>
+            <div>
+              Rent a Mind — concept demo by Rovin, built on{" "}
+              <a href="https://hellominds.ai" style={{ textDecoration: "underline" }}>
+                HelloMinds
+              </a>{" "}
+              by Animoca Brands. Not an official HelloMinds product. Persona Minds are simulations —
+              parody, not affiliation. Nothing here is financial or medical advice.
+            </div>
           </div>
         </footer>
       </body>

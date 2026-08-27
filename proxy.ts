@@ -9,6 +9,8 @@ function isOpen(pathname: string, method: string): boolean {
     pathname === "/marketplace" ||
     pathname.startsWith("/mind/") ||
     pathname === "/rewards" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
     pathname === "/login" ||
     pathname.startsWith("/api/auth/") ||
     (pathname === "/api/settle" && method === "GET") || // cron, self-authenticated
