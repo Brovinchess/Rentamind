@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
 import MindAvatar from "@/components/MindAvatar";
+import RatingWidget from "@/components/RatingWidget";
 import { getSessionEmail } from "@/lib/auth";
-import { getListing, getRental } from "@/lib/db";
+import { getListing, getRatingForRental, getRental } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function ChatPage({
     rental.renter_email === sessionEmail &&
     rental.status === "active" &&
     new Date(rental.ends_at) > new Date();
+  const myRating = rentalValid ? await getRatingForRental(rental.id).catch(() => null) : null;
 
   return (
     <main className="container page narrow">
@@ -55,6 +57,13 @@ export default async function ChatPage({
       ) : rentalValid ? (
         <>
           <ChatBox listingId={listing.id} rentalId={rental.id} />
+          {rental.messages_used > 0 ? (
+            <RatingWidget
+              rentalId={rental.id}
+              initialStars={myRating?.stars ?? null}
+              initialComment={myRating?.comment ?? null}
+            />
+          ) : null}
           <p style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
             Pick a mode — <b>Ask</b> a question,
             <b> Draft</b> content in its voice, or <b>Predict</b> what the persona would do.

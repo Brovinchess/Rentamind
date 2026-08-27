@@ -254,3 +254,39 @@ export async function getAllPointsEvents(): Promise<PointsEvent[]> {
   if (error) throw new Error(`points all: ${error.message}`);
   return (data ?? []) as PointsEvent[];
 }
+
+/* ── Ratings ── */
+
+export type Rating = {
+  id: string;
+  rental_id: string;
+  listing_id: string;
+  stars: number;
+  comment: string | null;
+  created_at: string;
+};
+
+export async function getRatingForRental(rentalId: string): Promise<Rating | null> {
+  const { data } = await db().from("ram_ratings").select("*").eq("rental_id", rentalId).maybeSingle();
+  return (data as Rating) ?? null;
+}
+
+export async function upsertRating(row: Partial<Rating>): Promise<Rating> {
+  const { data, error } = await db()
+    .from("ram_ratings")
+    .upsert(row, { onConflict: "rental_id" })
+    .select()
+    .single();
+  if (error) throw new Error(`rating: ${error.message}`);
+  return data as Rating;
+}
+
+/** Recompute a listing's average rating + count from its ratings. */
+export async function recomputeListingRating(listingId: string): Promise<void> {
+  const { data, error } = await db().from("ram_ratings").select("stars").eq("listing_id", listingId);
+  if (error) throw new Error(`rating agg: ${error.message}`);
+  const stars = (data ?? []).map((r) => Number(r.stars));
+  const count = stars.length;
+  const avg = count ? Math.round((stars.reduce((s, x) => s + x, 0) / count) * 10) / 10 : 0;
+  await db().from("ram_listings").update({ rating: avg, rating_count: count }).eq("id", listingId);
+}

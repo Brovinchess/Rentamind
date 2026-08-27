@@ -124,3 +124,6 @@ alter table ram_users enable row level security;
 -- alter table ram_wallets add column allowance numeric;
 -- alter table ram_wallets add column spent numeric not null default 0;
 -- alter table ram_wallets add column synced_at timestamptz;
+
+-- Ratings: one per rental
+create unique index if not exists ram_ratings_rental_uidx on ram_ratings(rental_id);
