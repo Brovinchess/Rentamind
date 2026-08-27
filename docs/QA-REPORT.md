@@ -106,3 +106,24 @@ All tests run against the refactored architecture (per-user Builder keys, proxie
 | — | Anonymous access rules (local + production) | ✅ browse open, act redirects/401 |
 
 Residual production items: custom SMTP no longer needed (no email auth); remaining launch list = daily message caps per rental, terms/privacy page, error tracking, per-listing rate limits.
+
+
+---
+
+## QA pass 3 — 2026-08-27 (proof-of-cognition wallet)
+
+Wallet correctness, verified against independently computed live balances, plus full regression.
+
+| # | Test | Result |
+|---|---|---|
+| W1 | Allowance formula edges (0→100, 300→150, 9999→5000, 1M→5000…) | ✅ 9/9 unit cases |
+| W2 | Rent syncs wallet from LIVE balances | ✅ real_cognition 15,750–15,761 matched an independent Builder-API sum exactly; allowance capped at 5,000 |
+| W3 | Insufficient balance | ✅ 402 with clear "backed by your real cognition" message |
+| W4 | Re-sync preserves `spent`; stale (>6h) wallets auto-resync | ✅ spent stayed 4,995 through a forced resync |
+| W5 | Already-renting path returns synced balance | ✅ |
+| — | Paid message end-to-end | ✅ balance 5,000→4,990, spent=10 in DB, in-character Mickey reply |
+| R1–R9 | Full regression: anon rules, bad/good login, all pages, own-listing rent block, cross-account 403, foreign-listing edit 404, injection filter, cron auth both ways, signout | ✅ all pass |
+| P1–P4 | Production: deploy Ready, public browse, login + profile 200, wallet row real (15,761 / 5,000 / 0) | ✅ |
+
+Docs updated: CONCEPT.md rewritten to the v2 architecture (Builder-key auth, proxied rentals,
+auto-study training, real-backed wallets); README refreshed.

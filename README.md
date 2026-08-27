@@ -2,13 +2,14 @@
 
 A marketplace demo built on [HelloMinds](https://hellominds.ai) (by Animoca Brands): stewards train Minds into specialists or personas, list them for rent, and renters get **direct, time-boxed access to the live trained Mind** — while both sides farm **Synapses** points toward a future airdrop.
 
-> Concept + full product spec: [docs/CONCEPT.md](docs/CONCEPT.md)
+> Current product spec: [docs/CONCEPT.md](docs/CONCEPT.md) · QA: [docs/QA-REPORT.md](docs/QA-REPORT.md)
 
 ## How it works
 
-- **Renting = a real Circle grant.** Checkout adds the renter's email to the Mind's Circle via the HelloMinds Builder API; expiry removes it. The renter talks to the actual Mind on web chat, email, or Telegram.
-- **Rentals settle in Cognition.** The rental payment is a cognition top-up to the rented Mind (simulated checkout in this demo; native per-Mind Stripe top-up in production).
-- **Synapses are burn-backed.** Training activity, rental supply, and renter usage all earn points; a settlement pass meters real cognition burned during rental windows.
+- **Sign in with your Builder API key** — the key is the account (validated live, stored encrypted). Every user gets their own Minds, Training Studio, listings, wallet, and points.
+- **Training Studio**: describe a persona in plain words; the Mind auto-studies it on a schedule (rotating topics, web research via Tavily), stored in its permanent memory.
+- **Renting**: per-message pricing through private proxied sessions (Ask / Draft / Predict modes). Renters never touch the Mind's Circle; a service envelope + injection filter keeps training trainer-only.
+- **Proof-of-cognition wallet**: a renter's balance = 50% of the real cognition their own Minds hold (floor 100, cap 5,000), synced live. Spending it earns points for both sides (Season 0 → future airdrop).
 
 ## Stack
 
@@ -37,8 +38,8 @@ npm run dev
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
 
 
-## Demo scope
+## Status
 
-Live: steward dashboard (real Minds, balances, 30-day burn, Training Scores), listing detail stats, **real circle add/remove on rent/expiry**, live chat with rented Minds, usage-metered Synapses settlement. Seeded: fictional listings (POTUS45, Neuro, Whale Watch, Scout), leaderboard rivals, ratings.
+Everything is live data — no seeded content: real Minds, balances, training cycles, rentals, and points. Remaining for public scale: per-rental daily caps, ratings UI, terms/privacy, error tracking (see QA report).
 
 Persona Minds are simulations — parody, not affiliation. Nothing here is financial or medical advice. Not an official HelloMinds product.
