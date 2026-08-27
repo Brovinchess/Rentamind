@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getBuilderKeyForEmail, getSessionEmail } from "@/lib/auth";
-import { addPoints, createRental, getListing, getOrCreateWallet, getRentalsForListing, updateRental } from "@/lib/db";
+import { getAuthedUser, getBuilderKeyForEmail } from "@/lib/auth";
+import { addPoints, createRental, getListing, getRentalsForListing, updateRental } from "@/lib/db";
+import { syncWallet } from "@/lib/wallet";
 import { mindsFor } from "@/lib/minds";
 import { POINTS } from "@/lib/points";
 
@@ -12,8 +13,9 @@ import { POINTS } from "@/lib/points";
  */
 export async function POST(req: Request) {
   try {
-    const email = await getSessionEmail();
-    if (!email) return NextResponse.json({ error: "Sign in to rent" }, { status: 401 });
+    const user = await getAuthedUser();
+    if (!user) return NextResponse.json({ error: "Sign in to rent" }, { status: 401 });
+    const email = user.email;
     const { listingId, days } = await req.json();
     const nDays = Math.max(1, Math.min(30, Number(days) || 7));
     if (!listingId) {
@@ -42,18 +44,19 @@ export async function POST(req: Request) {
     }
     const existing = active.find((r) => r.renter_email === email);
     if (existing) {
-      const wallet = await getOrCreateWallet(email);
+      const wallet = await syncWallet(user);
       return NextResponse.json({
         rentalId: existing.id,
         alreadyRenting: true,
-        walletBalance: Number(wallet.cognition),
+        walletBalance: wallet.balance,
+        realCognition: wallet.realCognition,
         pricePerMessage: Number(listing.price_per_message),
         points: { steward: 0, renter: 0 },
       });
     }
     const firstTime = !allRentals.some((r) => r.renter_email === email);
 
-    const wallet = await getOrCreateWallet(email);
+    const wallet = await syncWallet(user); // fresh read of the renter's REAL balances
     const rental = await createRental({
       listing_id: listing.id,
       renter_email: email,
@@ -95,7 +98,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       rentalId: rental.id,
-      walletBalance: Number(wallet.cognition),
+      walletBalance: wallet.balance,
+      realCognition: wallet.realCognition,
       pricePerMessage: Number(listing.price_per_message),
       points: { steward: stewardPts, renter: renterPts },
     });

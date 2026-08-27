@@ -43,7 +43,7 @@ const JOURNEY = [
 const EARN = [
   { k: "Train", v: "+5", unit: "per study cycle", d: "Your Mind studies its persona on your schedule — every cycle pays." },
   { k: "Get rented", v: "+50", unit: "per new renter", d: "Plus half a point for every cognition renters spend on your Mind." },
-  { k: "Rent", v: "+1", unit: "per cognition spent", d: "Renting other people's Minds farms points too. 1,000 cognition free to start." },
+  { k: "Rent", v: "+1", unit: "per cognition spent", d: "Renting other people's Minds farms points too. Your balance is backed by your real cognition." },
 ];
 
 export default async function Home() {
@@ -187,7 +187,7 @@ export default async function Home() {
       <section className="page container" style={{ textAlign: "center" }}>
         <h2 className="section-title" style={{ fontSize: "1.7rem" }}>Ready to meet the Minds?</h2>
         <p style={{ color: "var(--muted)", maxWidth: "48ch", margin: "0 auto 20px" }}>
-          Rent a trained persona in one minute — new renters get 1,000 cognition free — or start
+          Rent a trained persona in one minute — your rental balance comes from your real cognition — or start
           training your own.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>

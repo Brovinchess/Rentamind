@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAuthedUser, getBuilderKeyForEmail } from "@/lib/auth";
-import { addPoints, getListing, getOrCreateWallet, getRental, spendFromWallet, updateRental } from "@/lib/db";
+import { getAuthedUser, getBuilderKeyForEmail, type AuthedUser } from "@/lib/auth";
+import { addPoints, getListing, getRental, updateRental } from "@/lib/db";
+import { getWallet, spend } from "@/lib/wallet";
 import { looksLikeInjection, wrapClientMessage, type TaskMode } from "@/lib/envelope";
 import { listMindsFor, mindsFor } from "@/lib/minds";
 import { POINTS } from "@/lib/points";
@@ -39,8 +40,7 @@ type Resolved =
  * Renter path: listingId + your rentalId — proxied service session via the
  * listing OWNER's stored key.
  */
-async function resolve(listingId: string | null, mindId: string | null, rentalId: string | null): Promise<Resolved> {
-  const user = await getAuthedUser();
+async function resolve(user: AuthedUser | null, listingId: string | null, mindId: string | null, rentalId: string | null): Promise<Resolved> {
   if (!user) return { error: "Sign in required", status: 401 };
 
   if (mindId) {
@@ -76,7 +76,9 @@ async function resolve(listingId: string | null, mindId: string | null, rentalId
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
+    const user = await getAuthedUser();
     const r = await resolve(
+      user,
       url.searchParams.get("listingId"),
       url.searchParams.get("mindId"),
       url.searchParams.get("rentalId"),
@@ -89,10 +91,10 @@ export async function GET(req: Request) {
     rows.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
 
     let session = null;
-    if (r.kind === "renter") {
-      const wallet = await getOrCreateWallet(r.rental.renter_email);
+    if (r.kind === "renter" && user) {
+      const wallet = await getWallet(user);
       session = {
-        walletBalance: Number(wallet.cognition),
+        walletBalance: wallet.balance,
         pricePerMessage: Number(r.listing.price_per_message),
         messagesUsed: r.rental.messages_used,
         cognitionSpent: Number(r.rental.cognition_spent),
@@ -122,7 +124,8 @@ export async function POST(req: Request) {
     if ((!listingId && !mindId) || !text?.trim()) {
       return NextResponse.json({ error: "listingId or mindId, and text, required" }, { status: 400 });
     }
-    const r = await resolve(listingId ?? null, mindId ?? null, rentalId ?? null);
+    const user = await getAuthedUser();
+    const r = await resolve(user, listingId ?? null, mindId ?? null, rentalId ?? null);
     if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
 
     let outgoing = text.trim();
@@ -136,10 +139,10 @@ export async function POST(req: Request) {
         );
       }
       price = Number(r.listing.price_per_message);
-      const wallet = await getOrCreateWallet(r.rental.renter_email);
-      if (Number(wallet.cognition) < price) {
+      const wallet = await getWallet(user!);
+      if (wallet.balance < price) {
         return NextResponse.json(
-          { error: `Not enough cognition — this Mind costs ${price} per message and your balance is ${Math.floor(Number(wallet.cognition))}.` },
+          { error: `Not enough cognition — this Mind costs ${price} per message and your rental balance is ${Math.floor(wallet.balance)}. Your balance is backed by your real HelloMinds cognition; top up your Minds to raise it.` },
           { status: 402 },
         );
       }
@@ -154,7 +157,7 @@ export async function POST(req: Request) {
 
     let walletBalance: number | null = null;
     if (r.kind === "renter" && price > 0) {
-      walletBalance = await spendFromWallet(r.rental.renter_email, price);
+      walletBalance = await spend(user!, price);
       await updateRental(r.rental.id, {
         messages_used: r.rental.messages_used + 1,
         cognition_spent: Number(r.rental.cognition_spent) + price,

@@ -118,3 +118,9 @@ create table if not exists ram_users (
 alter table ram_users enable row level security;
 -- alter table ram_training_plans add column owner_email text;
 -- alter table ram_listings add column owner_human_id text;
+
+-- Proof-of-cognition wallets
+-- alter table ram_wallets add column real_cognition numeric;
+-- alter table ram_wallets add column allowance numeric;
+-- alter table ram_wallets add column spent numeric not null default 0;
+-- alter table ram_wallets add column synced_at timestamptz;

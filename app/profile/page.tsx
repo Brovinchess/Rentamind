@@ -7,11 +7,11 @@ import {
   getAllPointsEvents,
   getListing,
   getListingsForSteward,
-  getOrCreateWallet,
   getPointsEvents,
   getRentalsByRenter,
   getTrainingPlansForOwner,
 } from "@/lib/db";
+import { getWallet, WALLET_RULE } from "@/lib/wallet";
 import { listMindsFor } from "@/lib/minds";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function ProfilePage({
   const [allEvents, recent, wallet, myRentals] = await Promise.all([
     getAllPointsEvents().catch(() => []),
     getPointsEvents(200).catch(() => []),
-    getOrCreateWallet(email).catch(() => null),
+    getWallet(user).catch(() => null),
     getRentalsByRenter(email).catch(() => []),
   ]);
   const [mindsList, listings, plans] = await Promise.all([
@@ -97,11 +97,28 @@ export default async function ProfilePage({
         <div className="stat"><div className="k">Listed for rent</div><div className="v">{listings.filter((l) => l.is_active).length}</div></div>
       </div>
 
-      <h3 style={{ marginTop: 28 }}>Your cognition wallet</h3>
+      <h3 style={{ marginTop: 28 }}>Your rental balance</h3>
+      <p style={{ color: "var(--muted)", fontSize: "0.85rem", margin: "4px 0 0" }}>
+        Backed by your real HelloMinds cognition: {Math.round(WALLET_RULE.SHARE * 100)}% of what your
+        Minds hold (min {WALLET_RULE.FLOOR}, max {WALLET_RULE.CAP.toLocaleString()}), synced live from
+        your account.
+      </p>
       <div className="stat-grid" style={{ marginTop: 10 }}>
         <div className="stat">
+          <div className="k">Real cognition held</div>
+          <div className="v">{wallet?.realCognition != null ? Math.round(wallet.realCognition).toLocaleString() : "—"}</div>
+        </div>
+        <div className="stat">
+          <div className="k">Rental allowance</div>
+          <div className="v">{wallet ? Math.round(wallet.allowance).toLocaleString() : "—"}</div>
+        </div>
+        <div className="stat">
+          <div className="k">Spent</div>
+          <div className="v">{wallet ? Math.round(wallet.spent).toLocaleString() : "—"}</div>
+        </div>
+        <div className="stat">
           <div className="k">Balance</div>
-          <div className="v">{wallet ? Math.floor(Number(wallet.cognition)).toLocaleString() : "—"}</div>
+          <div className="v">{wallet ? Math.floor(wallet.balance).toLocaleString() : "—"}</div>
         </div>
         <div className="stat"><div className="k">Rentals taken</div><div className="v">{myRentals.length}</div></div>
       </div>
@@ -133,8 +150,7 @@ export default async function ProfilePage({
         </div>
       ) : (
         <p style={{ color: "var(--muted)", fontSize: "0.88rem" }}>
-          You haven&apos;t rented a Mind yet — renting earns 1 point per cognition, and your first 1,000
-          cognition is free.{" "}
+          You haven&apos;t rented a Mind yet — renting earns 1 point per cognition.{" "}
           <Link href="/marketplace" style={{ color: "var(--brand)", fontWeight: 700 }}>Browse the marketplace →</Link>
         </p>
       )}

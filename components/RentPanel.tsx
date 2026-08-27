@@ -67,9 +67,9 @@ export default function RentPanel({
           {result.alreadyRenting ? `You're already renting ${title}.` : `You're renting ${title}.`}
         </h3>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
-          Your cognition balance: <b>{Math.floor(result.walletBalance).toLocaleString()}</b> · each
-          message costs <b>{result.pricePerMessage}</b>. You earn points for every cognition you
-          spend; the trainer earns points too.
+          Your rental balance: <b>{Math.floor(result.walletBalance).toLocaleString()}</b> (backed by
+          your real HelloMinds cognition) · each message costs <b>{result.pricePerMessage}</b>. You
+          earn points for every cognition you spend; the trainer earns points too.
         </p>
         {!result.alreadyRenting ? (
           <p style={{ margin: 0, fontSize: "0.9rem" }}>
@@ -93,9 +93,9 @@ export default function RentPanel({
     <div className="card" style={{ display: "grid", gap: 4 }}>
       <h3 style={{ margin: "0 0 4px" }}>Rent this Mind</h3>
       <p style={{ margin: "0 0 10px", color: "var(--muted)", fontSize: "0.88rem" }}>
-        Free to start — you pay <b>{pricePerMessage} cognition per message</b> from your balance.
-        New renters get <b>1,000 cognition free</b> (Season 0). Every cognition you spend earns you
-        points toward the airdrop.
+        Free to start — you pay <b>{pricePerMessage} cognition per message</b> from your rental
+        balance, which is backed by the <b>real cognition your own Minds hold</b> (synced from your
+        HelloMinds account). Every cognition you spend earns you points toward the airdrop.
       </p>
       {stage === "error" ? (
         <p style={{ color: "var(--danger)", fontSize: "0.85rem", margin: "0 0 8px" }}>{error}</p>

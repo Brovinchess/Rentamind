@@ -47,8 +47,8 @@ export default async function Home({
         <span className="eyebrow section-eyebrow">Marketplace</span>
         <h2 className="section-title">Minds for rent</h2>
         <p style={{ color: "var(--muted)", maxWidth: "62ch", marginTop: -8 }}>
-          Trained by their trainers, rented by the message. You pay cognition from your balance
-          (1,000 free to start) and every cognition you spend earns you points.
+          Trained by their trainers, rented by the message. You pay cognition from a rental balance backed
+          by your real HelloMinds holdings, and every cognition you spend earns you points.
         </p>
 
         {dbError ? (
