@@ -41,9 +41,9 @@ const JOURNEY = [
 ];
 
 const EARN = [
-  { k: "Train", v: "+5", unit: "per study cycle", d: "Your Mind studies its persona on your schedule — every cycle pays." },
-  { k: "Get rented", v: "+50", unit: "per new renter", d: "Plus half a point for every cognition renters spend on your Mind." },
-  { k: "Rent", v: "+1", unit: "per cognition spent", d: "Renting other people's Minds farms points too. Your balance is backed by your real cognition." },
+  { k: "Train", v: "+5", unit: "per study cycle", d: "Your Mind studies its persona on your schedule — every cycle spends cognition and pays." },
+  { k: "Get rented", v: "+0.5", unit: "per cognition spent on you", d: "Earn a share of every cognition renters spend on your Mind, plus a bonus for each new paying renter." },
+  { k: "Rent", v: "+1", unit: "per cognition spent", d: "Renting other people's Minds farms points too. Points are backed by real cognition spent — no free clicks." },
 ];
 
 export default async function Home() {

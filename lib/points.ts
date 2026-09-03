@@ -1,12 +1,17 @@
 import { getActiveRentals, updateRental } from "./db";
 import type { LeaderboardRow, PointsEvent } from "./types";
 
+export const SEASON = "0";
+
+/**
+ * Points are SPEND-BASED. Every point must be backed by real cognition actually
+ * spent — so "farming" is just paying to play, which is the goal, and there are
+ * no free/flat bonuses to exploit with throwaway accounts.
+ */
 export const POINTS = {
-  NEW_RENTAL_BONUS: 20, // steward, each time their Mind gets rented
-  FIRST_RENTER_BONUS: 50, // steward, per new unique renter
-  RENTER_CHECKOUT_BONUS: 10, // renter, on starting a rental
-  RENTER_PER_COGNITION: 1, // renter, per cognition they spend using rented Minds
-  STEWARD_PER_COGNITION: 0.5, // steward share of what renters spend on their Mind
+  RENTER_PER_COGNITION: 1, // renter, per cognition they spend on rented Minds
+  STEWARD_PER_COGNITION: 0.5, // steward's share of what renters spend on their Mind
+  NEW_PAYING_RENTER_BONUS: 25, // steward, once per rental, on the renter's FIRST paid message (spend-gated)
 };
 
 export function aggregateLeaderboard(events: Pick<PointsEvent, "subject_email" | "subject_name" | "points">[]): LeaderboardRow[] {
@@ -38,8 +43,9 @@ export async function settleIfStale(): Promise<void> {
     await settle();
     const { runDueStudies } = await import("./study");
     await runDueStudies();
-  } catch {
-    // background pass — never surface to the page
+  } catch (e) {
+    // background pass — don't surface to the page, but log so a stalled loop is visible in ops.
+    console.error("[settleIfStale] background pass failed:", e);
   }
 }
 

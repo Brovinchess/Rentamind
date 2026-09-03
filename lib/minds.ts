@@ -33,7 +33,14 @@ export type LiveMindStats = {
   skillsCount: number | null;
 };
 
+// Fix 4: 30s cache so a page rendering many Minds doesn't hammer the Builder
+// API (and risk rate limits). Keyed per mind; balance staleness of ≤30s is fine.
+const statsCache = new Map<string, { at: number; stats: LiveMindStats }>();
+
 export async function getLiveMindStats(builderKey: string, mindId: string): Promise<LiveMindStats> {
+  const cacheKey = builderKey.slice(-12) + ":" + mindId;
+  const hit = statsCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < 30_000) return hit.stats;
   const c = mindsFor(builderKey);
   const startTime = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
   const [balance, usage, circle, skills] = await Promise.allSettled([
@@ -42,7 +49,7 @@ export async function getLiveMindStats(builderKey: string, mindId: string): Prom
     c.getCircle(mindId),
     c.listEquippedSkills(mindId),
   ]);
-  return {
+  const stats = {
     balance: balance.status === "fulfilled" ? balance.value.cognition : null,
     usage30d:
       usage.status === "fulfilled"
@@ -51,6 +58,8 @@ export async function getLiveMindStats(builderKey: string, mindId: string): Prom
     circleSize: circle.status === "fulfilled" ? circle.value.length : null,
     skillsCount: skills.status === "fulfilled" ? skills.value.length : null,
   };
+  statsCache.set(cacheKey, { at: Date.now(), stats });
+  return stats;
 }
 
 /** Training Score: age + cognition invested + skills. Capped at 1000. */

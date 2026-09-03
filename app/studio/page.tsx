@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthedUser } from "@/lib/auth";
 import { getStudyLog, getTrainingPlansForOwner } from "@/lib/db";
-import { listMindsFor } from "@/lib/minds";
+import { getLiveMindStats, listMindsFor } from "@/lib/minds";
 import StudioWizard from "@/components/StudioWizard";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ export default async function StudioPage() {
       cycles: p.study_cycles,
       isStudying: p.is_studying,
       nextStudyAt: p.next_study_at,
+      balance: (await getLiveMindStats(user.builderKey, p.mind_id).catch(() => ({ balance: null }))).balance,
       log: (await getStudyLog(p.id, 10).catch(() => [])).map((l) => ({
         id: l.id,
         topic: l.topic,

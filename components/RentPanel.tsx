@@ -11,7 +11,6 @@ type RentResult = {
   alreadyRenting?: boolean;
   walletBalance: number;
   pricePerMessage: number;
-  points: { steward: number; renter: number };
 };
 
 export default function RentPanel({
@@ -68,14 +67,9 @@ export default function RentPanel({
         </h3>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
           Your rental balance: <b>{Math.floor(result.walletBalance).toLocaleString()}</b> (backed by
-          your real HelloMinds cognition) · each message costs <b>{result.pricePerMessage}</b>. You
-          earn points for every cognition you spend; the trainer earns points too.
+          your real HelloMinds cognition) · each message costs <b>{result.pricePerMessage}</b>. Every
+          cognition you spend earns you points; the trainer earns a share too.
         </p>
-        {!result.alreadyRenting ? (
-          <p style={{ margin: 0, fontSize: "0.9rem" }}>
-            <b>+{result.points.renter} points</b> for you · +{result.points.steward} for the trainer.
-          </p>
-        ) : null}
         <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.8rem" }}>
           The chat button is your rental link — bookmark it, it works for the whole rental window.
         </p>

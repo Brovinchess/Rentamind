@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthedUser } from "@/lib/auth";
 import { resolveChatAccess, toPlainText } from "@/lib/chat-access";
-import { addPoints, updateRental } from "@/lib/db";
+import { addPoints, getRentalsForListing, updateRental } from "@/lib/db";
+import type { PointsEvent } from "@/lib/types";
 import { getWallet, spend } from "@/lib/wallet";
 import { looksLikeInjection, wrapClientMessage, type TaskMode } from "@/lib/envelope";
 import { mindsFor } from "@/lib/minds";
-import { POINTS } from "@/lib/points";
+import { MIN_MIND_COGNITION, mindBalance } from "@/lib/mind-health";
+import { POINTS, SEASON } from "@/lib/points";
 
 export const maxDuration = 180;
 
@@ -83,6 +85,15 @@ export async function POST(req: Request) {
           { status: 402 },
         );
       }
+      // Fix 2: if the Mind is out of real cognition it can't reply — refuse
+      // WITHOUT charging the renter, so nobody pays for silence.
+      const bal = await mindBalance(r.key, r.mindId);
+      if (bal != null && bal < MIN_MIND_COGNITION) {
+        return NextResponse.json(
+          { error: "This Mind just ran out of cognition and can't answer right now — you were not charged. Its trainer needs to top it up." },
+          { status: 409 },
+        );
+      }
       const mode: TaskMode = ["ask", "draft", "predict"].includes(task) ? task : "ask";
       outgoing = wrapClientMessage(mode, outgoing);
     }
@@ -94,6 +105,7 @@ export async function POST(req: Request) {
 
     let walletBalance: number | null = null;
     if (r.kind === "renter" && price > 0) {
+      const firstPaidMessage = r.rental.messages_used === 0;
       walletBalance = await spend(user!, price);
       await updateRental(r.rental.id, {
         messages_used: r.rental.messages_used + 1,
@@ -101,13 +113,13 @@ export async function POST(req: Request) {
       });
       const renterPts = Math.round(price * POINTS.RENTER_PER_COGNITION);
       const stewardPts = Math.round(price * POINTS.STEWARD_PER_COGNITION);
-      await addPoints([
+      const events: Partial<PointsEvent>[] = [
         {
           subject_email: r.rental.renter_email,
           role: "renter",
           event_type: "renter_usage",
           points: renterPts,
-          meta: { rentalId: r.rental.id, listing: r.listing.title, cognition: price },
+          meta: { rentalId: r.rental.id, listing: r.listing.title, cognition: price, season: SEASON },
         },
         {
           subject_email: r.listing.steward_email,
@@ -115,9 +127,26 @@ export async function POST(req: Request) {
           role: "steward",
           event_type: "rental_supply",
           points: stewardPts,
-          meta: { rentalId: r.rental.id, listing: r.listing.title, cognition: price },
+          meta: { rentalId: r.rental.id, listing: r.listing.title, cognition: price, season: SEASON },
         },
-      ]);
+      ];
+      // Spend-gated acquisition bonus: pay the trainer once, on this renter's
+      // FIRST paid message, and only if they've never paid on this listing before.
+      if (firstPaidMessage) {
+        const priorPaid = (await getRentalsForListing(r.listing.id).catch(() => []))
+          .some((x) => x.renter_email === r.rental.renter_email && x.id !== r.rental.id && x.messages_used > 0);
+        if (!priorPaid) {
+          events.push({
+            subject_email: r.listing.steward_email,
+            subject_name: r.listing.steward_name,
+            role: "steward",
+            event_type: "rental_supply",
+            points: POINTS.NEW_PAYING_RENTER_BONUS,
+            meta: { rentalId: r.rental.id, listing: r.listing.title, reason: "new paying renter", season: SEASON },
+          });
+        }
+      }
+      await addPoints(events);
     }
 
     const outcome = await c.waitForReply({

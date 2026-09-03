@@ -19,8 +19,11 @@ type PlanRow = {
   cycles: number;
   isStudying: boolean;
   nextStudyAt: string | null;
+  balance: number | null;
   log: LogRow[];
 };
+
+const LOW_COGNITION = 90; // matches STUDY_MIN_COGNITION on the server (auto-pause threshold)
 
 const ARCHETYPES = [
   { key: "public-figure", label: "Public Figure", note: "parody-labeled" },
@@ -113,8 +116,23 @@ export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans
             ) : (
               <span className="pill pill-demo">paused</span>
             )}
+            {p.balance != null ? (
+              <span
+                className="mono"
+                style={{ fontSize: "0.72rem", color: p.balance < LOW_COGNITION ? "var(--danger)" : "var(--muted)" }}
+                title="This Mind's real cognition balance. Training burns it each cycle."
+              >
+                {Math.round(p.balance).toLocaleString()} cognition
+              </span>
+            ) : null}
             <span className="score" style={{ marginLeft: "auto" }}>{p.cycles} study cycles</span>
           </div>
+          {p.balance != null && p.balance < LOW_COGNITION ? (
+            <div className="notice" style={{ margin: 0, borderColor: "var(--danger)" }}>
+              <b>Low cognition ({Math.round(p.balance)}).</b> Training auto-pauses when a Mind runs
+              low so it isn&apos;t drained dry — top up this Mind on HelloMinds to keep it studying.
+            </div>
+          ) : null}
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
             <PlanFrequency
               hours={p.frequencyHours}

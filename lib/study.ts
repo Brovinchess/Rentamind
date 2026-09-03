@@ -10,8 +10,12 @@ import {
 import { getBuilderKeyForEmail } from "./auth";
 import { studyDirective, type ArchetypeKey } from "./curriculum";
 import { mindsFor } from "./minds";
+import { MIN_MIND_COGNITION, mindBalance } from "./mind-health";
 
 export const TRAINING_POINTS_PER_CYCLE = 5;
+// Keep a bit more headroom for study than for a single reply — a directive plus
+// the Mind's research/reply can cost more than one rental message.
+const STUDY_MIN_COGNITION = MIN_MIND_COGNITION * 3;
 
 export function trainAlias(mindId: string) {
   return `ram-${mindId.slice(0, 8)}`;
@@ -64,8 +68,8 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
         await updateStudyLog(log.id, { reply: stripHtml(reply.messageText ?? "").slice(0, 3000) });
         repliesCollected++;
       }
-    } catch {
-      // best-effort; retry next pass
+    } catch (e) {
+      console.error("[study] reply collection failed for log", log.id, e);
     }
   }
 
@@ -76,6 +80,12 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
       const key = await keyFor(plan.owner_email);
       if (!key) continue;
       const c = mindsFor(key);
+      // Fix 3: auto-pause a persona's study loop before it drains its Mind dry.
+      const bal = await mindBalance(key, plan.mind_id);
+      if (bal != null && bal < STUDY_MIN_COGNITION) {
+        await updateTrainingPlan(plan.id, { is_studying: false });
+        continue;
+      }
       const alias = trainAlias(plan.mind_id);
       const { topic, text } = studyDirective(plan.archetype as ArchetypeKey, plan.persona_name, plan.study_cycles);
       await c.ensureConversation(alias, plan.mind_id);
@@ -93,12 +103,12 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
           role: "steward",
           event_type: "training",
           points: TRAINING_POINTS_PER_CYCLE,
-          meta: { planId: plan.id, persona: plan.persona_name, mind: plan.mind_name, cycle: plan.study_cycles + 1, topic },
+          meta: { planId: plan.id, persona: plan.persona_name, mind: plan.mind_name, cycle: plan.study_cycles + 1, topic, season: "0" },
         },
       ]);
       sent++;
-    } catch {
-      // best-effort; plan stays due and retries next pass
+    } catch (e) {
+      console.error("[study] directive send failed for plan", plan.id, e);
     }
   }
 

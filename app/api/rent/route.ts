@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAuthedUser, getBuilderKeyForEmail } from "@/lib/auth";
-import { addPoints, createRental, getListing, getRentalsForListing, updateRental } from "@/lib/db";
+import { createRental, getListing, getRentalsForListing, updateRental } from "@/lib/db";
 import { syncWallet } from "@/lib/wallet";
 import { mindsFor } from "@/lib/minds";
-import { POINTS } from "@/lib/points";
+import { MIN_MIND_COGNITION, mindBalance } from "@/lib/mind-health";
 
 /**
  * POST /api/rent — start a rental session for the signed-in user.
@@ -37,6 +37,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "This Mind's trainer hasn't connected their account recently — try another listing" }, { status: 409 });
     }
 
+    // Fix 2: don't let anyone rent a Mind that's too low on real cognition to reply.
+    const bal = await mindBalance(ownerKey, listing.mind_id);
+    if (bal != null && bal < MIN_MIND_COGNITION) {
+      return NextResponse.json(
+        { error: "This Mind is out of cognition right now and can't reliably answer — check back after its trainer tops it up." },
+        { status: 409 },
+      );
+    }
+
     const allRentals = await getRentalsForListing(listingId);
     const active = allRentals.filter((r) => r.status === "active");
     if (active.length >= listing.max_concurrent) {
@@ -51,10 +60,8 @@ export async function POST(req: Request) {
         walletBalance: wallet.balance,
         realCognition: wallet.realCognition,
         pricePerMessage: Number(listing.price_per_message),
-        points: { steward: 0, renter: 0 },
       });
     }
-    const firstTime = !allRentals.some((r) => r.renter_email === email);
 
     const wallet = await syncWallet(user); // fresh read of the renter's REAL balances
     const rental = await createRental({
@@ -76,32 +83,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const stewardPts = firstTime ? POINTS.FIRST_RENTER_BONUS : POINTS.NEW_RENTAL_BONUS;
-    const renterPts = POINTS.RENTER_CHECKOUT_BONUS;
-    await addPoints([
-      {
-        subject_email: listing.steward_email,
-        subject_name: listing.steward_name,
-        role: "steward",
-        event_type: "rental_supply",
-        points: stewardPts,
-        meta: { rentalId: rental.id, listing: listing.title, firstTimeRenter: firstTime },
-      },
-      {
-        subject_email: email,
-        role: "renter",
-        event_type: "bonus",
-        points: renterPts,
-        meta: { rentalId: rental.id, listing: listing.title, reason: "rental started" },
-      },
-    ]);
-
+    // No points awarded just for starting a rental — points are spend-based and
+    // accrue per paid message in /api/chat, so free clicks can't farm anything.
     return NextResponse.json({
       rentalId: rental.id,
       walletBalance: wallet.balance,
       realCognition: wallet.realCognition,
       pricePerMessage: Number(listing.price_per_message),
-      points: { steward: stewardPts, renter: renterPts },
     });
   } catch (e) {
     return NextResponse.json(
