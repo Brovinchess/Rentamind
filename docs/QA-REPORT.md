@@ -171,3 +171,46 @@ First audit after the app ran unattended for a week. Goal: confirm real-world be
 - Native asks: account-to-account cognition transfer, or Stripe top-ups via a partner key, so renter spend actually refills the rented Mind.
 
 **Verdict:** no regressions after a week live; every spec'd behaviour verified against real data; the two in-flight features (ratings, real-time chat) are complete and shipped. Launch-ready for Season 0.
+
+---
+
+## QA pass 5 — 2026-09-03 (fixes from the audit)
+
+The pass-4 audit found no bugs, only hardening gaps. After discussion, the sybil concern was
+reframed: **if a point requires real cognition spend, farming it just means paying — that's the
+goal.** So the fix is to make points purely spend-based, not to build fraud detection. Four fixes
+shipped (`267db2e`):
+
+### Fix 1 — spend-based points (airdrop integrity)
+- **Removed** the free renter `+10` "clicked rent" bonus and the flat steward `+50/+20` rent-time
+  bonuses — the only points that cost nothing and were farmable with throwaway accounts.
+- Points now: renter **+1 / cognition**, steward **+0.5 / cognition**, study **+5 / cycle**
+  (trainer's own spend), plus a **+25 "new paying renter"** bonus paid to the trainer only on a
+  renter's **first paid message** and only if they've never paid on that listing — fully spend-gated.
+- Added a `season` tag to points events for clean future resets.
+- **Verified:** renting now awards 0 points; first paid message → renter +10, steward +5 usage
+  **+25 acquisition**; Mickey replied "Hot dogs! 🐭".
+
+### Fix 2 — low-cognition guard (no paying for silence)
+- New `lib/mind-health.ts`: a Mind below the reply threshold (30 cognition) **can't be rented**,
+  and a paid message is **refused without charging** the renter.
+- **Verified live:** a real Mind sitting at **−26 cognition** returned `409 out of cognition` on
+  a rent attempt; renter not charged.
+
+### Fix 3 — training can't drain a Mind dry
+- The study loop **auto-pauses** a persona when its Mind drops below the study threshold
+  (3× reply floor) instead of studying it into the negative.
+- Studio now shows each persona's **live cognition** and a red low-balance warning.
+
+### Fix 4 — performance + observability
+- **30s cache** on live Mind stats (balance/usage/circle/skills) so a page rendering many Minds
+  no longer hammers the Builder API (rate-limit safety).
+- Structured `console.error` logging in the settle/study background passes so a stalled loop is
+  visible in Vercel logs (full Sentry still optional; needs a DSN).
+
+### Not fixed (unchanged — external dependency)
+- Renter spend still doesn't *transfer* to the rented Mind (no HelloMinds account-to-account
+  cognition API). Needs a partner key (Stripe top-ups) or a native transfer endpoint.
+
+**Post-fix state:** `tsc` clean; all four verified (three live against real data, one code-path);
+QA data cleaned; 2 real trainers + 3 real listings intact; deployed to production.
