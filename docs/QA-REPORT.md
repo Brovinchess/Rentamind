@@ -127,3 +127,47 @@ Wallet correctness, verified against independently computed live balances, plus 
 
 Docs updated: CONCEPT.md rewritten to the v2 architecture (Builder-key auth, proxied rentals,
 auto-study training, real-backed wallets); README refreshed.
+
+---
+
+## QA pass 4 — 2026-09-03 (full audit after ~1 week live)
+
+First audit after the app ran unattended for a week. Goal: confirm real-world behaviour matches spec, catch drift, ship the pending real-time-chat work.
+
+### Live-state findings (real data, not seeded)
+
+- **Multi-tenant working in the wild:** a second real trainer, `kennethw@anichess.com`, signed in with their own Builder key and created a 4th persona (**Athene**, 14 study cycles). Confirms the Builder-key auth + per-user scoping holds for a stranger, not just the seed account.
+- **Study loop ran continuously for a week:** Max Verstappen / Mickey Mouse / The Incredible Hulk each reached **79 study cycles**; latest directive Sep 3 with a stored in-character reply. The `*/15` cron + page-visit ticks kept firing with no babysitting. `next_study_at` scheduling stayed on cadence (no drift/stall).
+- **Points ledger sane:** rovin 1,277 · kennethw 70 · a renter 33 — all from real activity.
+- **Listings:** 3 active (Hulk/Mickey 10, Max 15 cog/msg), all `unrated` (no organic ratings yet — expected).
+
+### Behaviour verification (local, real Builder API + DB)
+
+| # | Test | Result |
+|---|---|---|
+| A/B | Login: real key accepts (18 minds), garbage key → 400 | ✅ |
+| C | Signed-in pages `/my-minds /studio /profile /launch` | ✅ 200 |
+| D | **SSE stream** authed → `data: {"type":"connected"}` frame | ✅ |
+| E | SSE stream unauth → 401 JSON | ✅ |
+| F | Chat GET transcript (trainer) | ✅ 50 msgs |
+| G | Renter rents Hulk — wallet **5,000 backed by real 15,919 cognition** | ✅ |
+| H | Injection message from renter | ✅ 400 filtered |
+| I | Owner opens renter's rental | ✅ 403 cross-account |
+| J | Owner rents own listing | ✅ 400 blocked |
+| K | Rate before chatting | ✅ 400 "chat at least once first" |
+| L | Paid message | ✅ 5,000→4,990, in-character reply |
+| M/N | Rate 5★ → listing avg recomputes | ✅ 200, listing → 5.0 (1) |
+| O | Renter points chain | ✅ bonus 10 + usage 10 + first-rating 5 |
+| — | Production: public 200s, protected → login, all APIs 401 unauth | ✅ |
+| — | `tsc --noEmit` clean | ✅ |
+
+### Shipped this pass
+- **Real-time chat** (was uncommitted from the prior session, now verified + committed `6b2131d`): SSE reply stream, live/connecting status pill, and an elapsed "reasoning · M:SS · usually 1–3 min" timer — answering the earlier "does it show remaining time / sync in real time" question. Replies now arrive instantly via SSE, with polling fallback.
+- **Ratings** (committed `500a45d` during the week): 1–5★ + comment, one per rental, editable, must-chat-first, listing averages auto-recompute, +5 points for first rating.
+
+### Still open (unchanged, tracked)
+- Anti-sybil decay for self-rental / multi-account farming (balances being real-cognition-backed already prices it; graph decay not yet built).
+- Error tracking (Sentry/log drain) for production ops.
+- Native asks: account-to-account cognition transfer, or Stripe top-ups via a partner key, so renter spend actually refills the rented Mind.
+
+**Verdict:** no regressions after a week live; every spec'd behaviour verified against real data; the two in-flight features (ratings, real-time chat) are complete and shipped. Launch-ready for Season 0.
