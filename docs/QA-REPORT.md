@@ -214,3 +214,42 @@ shipped (`267db2e`):
 
 **Post-fix state:** `tsc` clean; all four verified (three live against real data, one code-path);
 QA data cleaned; 2 real trainers + 3 real listings intact; deployed to production.
+
+---
+
+## QA pass 6 — 2026-09-08 (persona / training-loop audit)
+
+Audited all four live training personas. Found and fixed a **critical stall**.
+
+### Critical bug found & fixed: study loop had stalled for ~5 days
+- **Symptom:** all four plans `is_studying=true` but overdue 3–5 days — Max Verstappen (cyc 97),
+  Mickey Mouse (82), The Incredible Hulk (86), Athene (18, kennethw's) — no new cycles since ~Sep 3.
+- **Diagnosis (instrumented, step-by-step):** `settle()` fine (0.6s), then the study loop hit
+  Max first and **hung forever on `getLatestHistoryFingerprint`** — balance ✓1.6s,
+  ensureConversation ✓1s, fingerprint ✗ never returned. Minds with large conversation histories
+  (~90+ cycles ≈ 180+ messages) make that history read hang; with no timeout it wedged the whole
+  pass, the serverless function was killed at its limit, and **nothing advanced for any plan** —
+  a permanent death-spiral (every cron/visit re-hit Max and died).
+- **Fix (`lib/study.ts`, commit `d39f2a2`):** time-box every Builder call (20s; 5s for the
+  optional fingerprint capture); **send directives first** (advance cycle+points) then collect
+  replies best-effort; bound each pass (≤3 plans, ≤5 reply reads, 45s deadline); on a plan's
+  failure push `next_study_at` out 30 min so it can't block the queue.
+- **Verified:** all four resumed advancing (Max 97→98, Mickey 82→83, Hulk 86→87, Athene 18→19);
+  **production settle now returns in ~3s** (was timing out >120s); no plan overdue.
+
+### Persona quality — all four in-character ✅
+Latest study replies (today) and a live rental probe:
+- **Max Verstappen** — live reply "Driving flat out. That's it." — blunt, on-voice ✅
+- **Mickey Mouse** — "Oh boy, pal!…" ✅
+- **The Incredible Hulk** — "RAAARGH! Hulk HEAR…" (full caps voice) ✅
+- **Athene** (kennethw's, on the `Kogito` Mind) — coherent, addresses its steward ✅
+
+### Observation (not a bug) — meta-drift at high cycle counts
+At 80–98 cycles the topic list has looped several times, so study replies increasingly *narrate
+the training* ("STUDY DIRECTIVE #79… go deeper than v4 cycle 68") rather than pure in-character
+content. Rental-facing replies remain clean. Recommend: expand/rotate the curriculum or soft-cap
+cycles so directives stay novel — otherwise cognition is spent on diminishing returns.
+
+### Health snapshot
+2 real trainers · 4 personas training (3 rovin + 1 kennethw) · 3 active listings · Mind balances
+healthy (Max 1,122 · Mickey 1,265 · Hulk 1,261 · Kogito 749, all above the study auto-pause floor).
