@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthedUser, getBuilderKeyForEmail } from "@/lib/auth";
+import { getAuthedUser, getAccessTokenForEmail } from "@/lib/auth";
 import { createRental, getListing, getRentalsForListing, updateRental } from "@/lib/db";
 import { syncWallet } from "@/lib/wallet";
 import { mindsFor } from "@/lib/minds";
@@ -7,7 +7,7 @@ import { MIN_MIND_COGNITION, mindBalance } from "@/lib/mind-health";
 
 /**
  * POST /api/rent — start a rental session for the signed-in user.
- * The private conversation is opened through the LISTING OWNER's stored key
+ * The private conversation is opened through the LISTING OWNER's HelloMinds connection
  * (Minds only talk to their own steward's account), and the renter reaches it
  * exclusively through our proxied chat.
  */
@@ -32,9 +32,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "That's your own Mind — chat with it for free in its training room" }, { status: 400 });
     }
 
-    const ownerKey = await getBuilderKeyForEmail(listing.steward_email);
+    const ownerKey = await getAccessTokenForEmail(listing.steward_email);
     if (!ownerKey) {
-      return NextResponse.json({ error: "This Mind's trainer hasn't connected their account recently — try another listing" }, { status: 409 });
+      return NextResponse.json({ error: "This Mind is offline — its trainer needs to reconnect their HelloMinds account. Try another listing." }, { status: 409 });
     }
 
     // Fix 2: don't let anyone rent a Mind that's too low on real cognition to reply.

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "ram_session";
 
-/** Routes anyone can see; acting requires signing in with a Builder key. */
+/** Routes anyone can see; acting requires connecting a HelloMinds account. */
 function isOpen(pathname: string, method: string): boolean {
   return (
     pathname === "/" ||
@@ -12,6 +12,7 @@ function isOpen(pathname: string, method: string): boolean {
     pathname === "/terms" ||
     pathname === "/privacy" ||
     pathname === "/login" ||
+    pathname === "/auth/callback" || // HelloMinds OAuth redirect lands here pre-session
     pathname.startsWith("/api/auth/") ||
     (pathname === "/api/settle" && method === "GET") || // cron, self-authenticated
     pathname.startsWith("/_next") ||

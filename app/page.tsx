@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Coins, Rocket, Store } from "lucide-react";
+import { ArrowRight, BookOpen, Coins, Rocket, Sparkles, Store } from "lucide-react";
 import MindAvatar from "@/components/MindAvatar";
 import { getAllPointsEvents, getListings, getStudyLog, getTrainingPlans } from "@/lib/db";
 
@@ -10,13 +10,21 @@ const JOURNEY = [
     icon: Rocket,
     step: "01",
     title: "Launch a Mind",
-    body: "Create a Mind on HelloMinds in under a minute. It appears here automatically.",
+    body: "Pick what it should be good at, claim a name we check live against HelloMinds, and awaken it.",
     href: "/launch",
     cta: "Launch",
   },
   {
-    icon: BookOpen,
+    icon: Sparkles,
     step: "02",
+    title: "Give it skills",
+    body: "Equip abilities from the Bazaar — research, markets, calendars. Nearly 4,000 to choose from.",
+    href: "/skills",
+    cta: "Bazaar",
+  },
+  {
+    icon: BookOpen,
+    step: "03",
     title: "Train a persona",
     body: "Tell it who to become. It studies on repeat — speech, history, behavior — and every cycle earns you points.",
     href: "/studio",
@@ -24,7 +32,7 @@ const JOURNEY = [
   },
   {
     icon: Store,
-    step: "03",
+    step: "04",
     title: "Rent it out",
     body: "List it on the marketplace. Renters pay cognition per message; every rental earns you points.",
     href: "/my-minds",
@@ -32,7 +40,7 @@ const JOURNEY = [
   },
   {
     icon: Coins,
-    step: "04",
+    step: "05",
     title: "Farm rewards",
     body: "All activity — training, renting out, renting — accrues points toward a future airdrop.",
     href: "/rewards",
@@ -60,18 +68,37 @@ export default async function Home() {
     { k: "Points issued", v: Math.round(events.reduce((s, e) => s + Number(e.points), 0)).toLocaleString() },
   ];
 
-  // Live showcase: personas in training with their latest in-character study reply.
+  // Live showcase: personas in training, quoted in character.
+  //
+  // Past ~80 study cycles Minds start narrating the training loop itself
+  // ("STUDY DIRECTIVE #162 received!") instead of speaking as the persona — see
+  // the meta-drift note in docs/QA-REPORT.md. Those replies are true but make
+  // terrible shop-window copy, so we skip them and show the most recent reply
+  // that actually reads in character. If a persona has none, it shows no quote.
+  const META_CHATTER = /study directive|directive #|#\d{2,}|cycle \d+|go deeper|\breceived\b|\bv\d+\b/i;
+
+  /** Catches the other failure mode: a word looping ("substrate under substrate under…"). */
+  const isRepetitive = (s: string) => {
+    const words = s.toLowerCase().match(/[a-z']{4,}/g) ?? [];
+    if (words.length < 8) return false;
+    const counts = new Map<string, number>();
+    for (const w of words) counts.set(w, (counts.get(w) ?? 0) + 1);
+    return [...counts.values()].some((n) => n >= 4);
+  };
+
   const showcase = (
     await Promise.all(
       plans.slice(0, 3).map(async (p) => {
-        const log = await getStudyLog(p.id, 5).catch(() => []);
-        const latest = log.find((l) => l.reply);
+        const log = await getStudyLog(p.id, 12).catch(() => []);
+        const inCharacter = log.find(
+          (l) => l.reply && !META_CHATTER.test(l.reply) && !isRepetitive(l.reply),
+        );
         return {
           id: p.id,
           persona: p.persona_name,
           mind: p.mind_name,
           cycles: p.study_cycles,
-          quote: latest?.reply?.replace(/\s+/g, " ").slice(0, 150) ?? null,
+          quote: inCharacter?.reply?.replace(/\s+/g, " ").slice(0, 150) ?? null,
         };
       }),
     )
@@ -148,7 +175,7 @@ export default async function Home() {
       {/* ── journey ── */}
       <section className="page container" style={{ paddingTop: 24 }}>
         <span className="eyebrow section-eyebrow">The journey</span>
-        <h2 className="section-title">Four steps, all of them earn</h2>
+        <h2 className="section-title">Five steps, all of them earn</h2>
         <div className="stepper">
           {JOURNEY.map((s, i) => (
             <div className="card step-card" key={s.title}>
@@ -194,6 +221,10 @@ export default async function Home() {
           <Link href="/marketplace" className="btn btn-primary">Browse the Marketplace</Link>
           <Link href="/launch" className="btn btn-outline">Launch a Mind</Link>
         </div>
+        <p className="mono" style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: 22 }}>
+          Every Mind runs on cognition. We show you how many days each one has left before it goes
+          quiet — on your dashboard, on its listing, and on the training slider.
+        </p>
       </section>
     </main>
   );

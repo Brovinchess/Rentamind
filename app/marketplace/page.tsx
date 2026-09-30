@@ -1,27 +1,37 @@
 import Link from "next/link";
 import MindCard from "@/components/MindCard";
-import { getBuilderKeyForEmail } from "@/lib/auth";
+import { getAccessTokenForEmail } from "@/lib/auth";
 import { getListings } from "@/lib/db";
 import { getLiveMindStats, trainingScore } from "@/lib/minds";
+import type { Runway } from "@/lib/runway";
 import type { Listing } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORIES = ["All", "Personas", "Experts", "Trading", "Sports", "Culture"];
 
-async function scoreFor(listing: Listing): Promise<number> {
-  if (!listing.mind_id) return listing.training_score;
+/** Live score + runway for a listing, read through its owner's HelloMinds connection. */
+async function liveFor(
+  listing: Listing,
+): Promise<{ score: number; runway: Runway | null; offline: boolean }> {
+  const fallback = { score: listing.training_score, runway: null, offline: false };
+  if (!listing.mind_id) return fallback;
   try {
-    const key = await getBuilderKeyForEmail(listing.steward_email);
-    if (!key) return listing.training_score;
+    const key = await getAccessTokenForEmail(listing.steward_email);
+    // Trainer's 30-day HelloMinds connection lapsed: nobody can reach this Mind.
+    if (!key) return { ...fallback, offline: true };
     const stats = await getLiveMindStats(key, listing.mind_id);
-    return trainingScore({
-      createdAt: listing.created_at,
-      usage30d: stats.usage30d,
-      skillsCount: stats.skillsCount,
-    });
+    return {
+      score: trainingScore({
+        createdAt: listing.created_at,
+        usageWindow: stats.usageWindow,
+        skillsCount: stats.skillsCount,
+      }),
+      runway: stats.runway,
+      offline: false,
+    };
   } catch {
-    return listing.training_score;
+    return fallback;
   }
 }
 
@@ -39,7 +49,7 @@ export default async function Home({
     dbError = e instanceof Error ? e.message : String(e);
   }
   const filtered = cat === "All" ? listings : listings.filter((l) => l.category === cat);
-  const scores = await Promise.all(filtered.map(scoreFor));
+  const live = await Promise.all(filtered.map(liveFor));
 
   return (
     <main>
@@ -71,7 +81,7 @@ export default async function Home({
         ) : (
           <div className="grid">
             {filtered.map((l, i) => (
-              <MindCard key={l.id} listing={l} score={scores[i]} />
+              <MindCard key={l.id} listing={l} score={live[i].score} runway={live[i].runway} offline={live[i].offline} />
             ))}
           </div>
         )}

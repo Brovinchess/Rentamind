@@ -169,6 +169,7 @@ button { font-family: inherit; }
 .pill-demo { background: var(--warn-soft); color: var(--warn); }
 .pill-label { background: var(--brand-soft); color: var(--brand-deep); }
 .pill-cat { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.pill-dry { background: #fbe6e2; color: var(--danger); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 .score {
@@ -345,3 +346,39 @@ td { font-variant-numeric: tabular-nums; }
 .legal h3 { margin-top: 26px; }
 .legal p, .legal li { max-width: 70ch; font-size: 0.95rem; }
 .legal ul { padding-left: 20px; display: grid; gap: 6px; }
+
+/* ── guided launch flow ── */
+.role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.role-card {
+  display: grid; gap: 4px; text-align: left; cursor: pointer;
+  padding: 14px 16px; border-radius: 12px; background: var(--bg);
+  border: 1.5px solid var(--line); font: inherit; color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.role-card:hover { border-color: var(--brand); background: var(--brand-soft); }
+.role-card b { font-size: 0.95rem; }
+.role-card span { color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
+.spin { animation: spin 1s linear infinite; vertical-align: -1px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── top-up ── */
+.topup-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.topup-row .amount {
+  padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--card); font: inherit; font-size: 0.82rem; cursor: pointer;
+}
+.topup-row .amount.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-deep); font-weight: 700; }
+
+/* ── section sub-navigation ── */
+.subnav {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin: 0 0 22px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.subnav a {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 999px; padding: 6px 14px;
+  font-size: 0.85rem; font-weight: 700; color: var(--muted);
+}
+.subnav a:hover { background: var(--brand-soft); color: var(--brand-deep); }
+.subnav a.active { background: var(--brand); color: #fff; }

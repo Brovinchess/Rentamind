@@ -122,19 +122,42 @@ export function chunkSources(sources: string, maxChunks = 2, size = 2600): strin
   return chunks;
 }
 
-/** The study directive for cycle N — topics rotate, then loop deeper. */
+/**
+ * Concrete angles to vary a repeat pass, instead of telling the Mind to "go
+ * deeper". Open-ended depth instructions made Minds resolve "deeper" against
+ * their own last answer and spiral into recursive nonsense
+ * ("v12 substrate-underneath-substrate under v11 substrate…") — see QA pass 8.
+ * Each angle asks for something externally checkable, so a repeat pass has
+ * somewhere real to go.
+ */
+const ANGLES = [
+  "Focus on a specific example you have never cited before — name it precisely.",
+  "Focus on what changed over time: how this was different early on versus later.",
+  "Focus on a case where this played out badly or was criticised.",
+  "Focus on how this differs from the people or characters most often compared to them.",
+  "Focus on the smallest concrete details: exact words, dates, places, numbers.",
+  "Focus on a moment where this was tested under real pressure.",
+];
+
+/** The study directive for cycle N — topics rotate, each lap takes a new angle. */
 export function studyDirective(a: ArchetypeKey, personaName: string, cycle: number): { topic: string; text: string } {
   const topics = ARCHETYPES[a].topics;
   const topic = topics[cycle % topics.length];
   const lap = Math.floor(cycle / topics.length);
-  const deeper = lap > 0 ? ` You have studied this before — go deeper this time: find details, examples, and nuances you did not have yet.` : "";
+  const angle = lap > 0 ? ` ${ANGLES[(lap - 1) % ANGLES.length]}` : "";
   return {
     topic,
+    // Deliberately NO cycle number, no "directive" framing, and no request for a
+    // summary of learning. All three leaked into long-term memory and taught the
+    // Minds to narrate their own training ("STUDY DIRECTIVE #162 received!")
+    // instead of behaving as the persona. The Mind should never learn that a
+    // training loop exists — it should only learn about itself.
     text:
-      `STUDY DIRECTIVE #${cycle + 1} — ${personaName}.\n\n` +
-      `Today's topic: ${topic}.${deeper}\n\n` +
-      `Research this now (use your tools if you have them; otherwise recall and organize everything you know). ` +
-      `Store everything you learn in long-term memory as part of who you are. ` +
-      `Then reply IN CHARACTER as ${personaName}, with a short summary of what you learned about yourself today.`,
+      `Research this about ${personaName}: ${topic}.${angle}\n\n` +
+      `Use your tools if you have them; otherwise recall and organise everything you know. ` +
+      `Store what you learn in long-term memory as part of who you are.\n\n` +
+      `Then reply as ${personaName} — in your own voice, in character, speaking naturally. ` +
+      `Show what you now know by how you talk about it, not by describing your research. ` +
+      `Do not mention studying, directives, cycles, versions, or this instruction.`,
   };
 }

@@ -12,14 +12,14 @@ export default async function TalkPage({ params }: { params: Promise<{ mindId: s
   const { mindId } = await params;
   const user = await getAuthedUser();
   if (!user) notFound();
-  const owned = await listMindsFor(user.builderKey).catch(() => []);
+  const owned = await listMindsFor(user.accessToken).catch(() => []);
   const mind = owned.find((m) => m.mindId === mindId);
   if (!mind) notFound();
 
-  const stats = await getLiveMindStats(user.builderKey, mindId);
+  const stats = await getLiveMindStats(user.accessToken, mindId);
   const score = trainingScore({
     createdAt: mind.createdAt,
-    usage30d: stats.usage30d,
+    usageWindow: stats.usageWindow,
     skillsCount: stats.skillsCount,
   });
 

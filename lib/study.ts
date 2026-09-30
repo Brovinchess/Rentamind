@@ -7,10 +7,11 @@ import {
   updateStudyLog,
   updateTrainingPlan,
 } from "./db";
-import { getBuilderKeyForEmail } from "./auth";
+import { getAccessTokenForEmail } from "./auth";
 import { studyDirective, type ArchetypeKey } from "./curriculum";
 import { mindsFor } from "./minds";
 import { MIN_MIND_COGNITION, mindBalance } from "./mind-health";
+import { withTimeout } from "./with-timeout";
 
 export const TRAINING_POINTS_PER_CYCLE = 5;
 // Keep more headroom for study than a single reply — a directive plus the Mind's
@@ -21,11 +22,14 @@ const STUDY_MIN_COGNITION = MIN_MIND_COGNITION * 3;
 // histories some calls (e.g. history reads) can hang indefinitely, which
 // previously wedged the whole scheduler and stalled ALL plans. A hung call now
 // just fails that one step.
-const CALL_TIMEOUT_MS = 20_000;
+// Bounds live in lib/with-timeout.ts; this pass just uses the shared default.
 // Stay well under the serverless function limit so a pass always completes and
 // the cron/page-visit ticks make steady progress.
 const PASS_DEADLINE_MS = 45_000;
-const MAX_PLANS_PER_PASS = 3;
+// Plans are handled most-overdue-first and the pass stops at PASS_DEADLINE_MS,
+// which is the real safety bound. This cap only stops one pass from queuing an
+// unbounded amount of work; too low a value starves whoever sorts last.
+const MAX_PLANS_PER_PASS = 12;
 const MAX_REPLIES_PER_PASS = 5;
 // When a plan's send fails, wait this long before retrying so it can't hammer
 // the API or block other plans every pass.
@@ -35,11 +39,32 @@ export function trainAlias(mindId: string) {
   return `ram-${mindId.slice(0, 8)}`;
 }
 
-function withTimeout<T>(p: Promise<T>, label: string, ms = CALL_TIMEOUT_MS): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`timeout: ${label}`)), ms)),
-  ]);
+/**
+ * When the next study cycle is due, anchored to the slot this one was *due*
+ * rather than the moment it actually ran.
+ *
+ * Scheduling from `Date.now()` compounded the cron's granularity: a pass fires
+ * up to 15 min after a plan comes due, so `now + 2h` pushed every subsequent
+ * slot 15 min later than the last. Measured effect was a median gap of 2.25h on
+ * a 2h setting — ~14% fewer cycles than the slider asked for, growing with time.
+ *
+ * Anchoring keeps cycles on a fixed grid: any one cycle may be a few minutes
+ * late, but the error never accumulates.
+ */
+export function nextSlot(dueAtIso: string | null, frequencyHours: number, now = Date.now()): string {
+  const freqMs = Math.max(1, frequencyHours) * 3600_000;
+  const dueAt = dueAtIso ? new Date(dueAtIso).getTime() : now;
+  if (!Number.isFinite(dueAt)) return new Date(now + freqMs).toISOString();
+
+  let next = dueAt + freqMs;
+  if (next <= now) {
+    // The plan fell behind (paused, stalled, or an outage). Skip forward to the
+    // next slot on the grid instead of firing a burst of catch-up cycles.
+    const missed = Math.ceil((now - dueAt) / freqMs);
+    next = dueAt + missed * freqMs;
+    if (next <= now) next += freqMs;
+  }
+  return new Date(next).toISOString();
 }
 
 function stripHtml(html: string): string {
@@ -73,7 +98,7 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
   const keyCache = new Map<string, string | null>();
   const keyFor = async (email: string | null) => {
     if (!email) return null;
-    if (!keyCache.has(email)) keyCache.set(email, await getBuilderKeyForEmail(email));
+    if (!keyCache.has(email)) keyCache.set(email, await getAccessTokenForEmail(email));
     return keyCache.get(email) ?? null;
   };
 
@@ -110,7 +135,7 @@ export async function runDueStudies(): Promise<{ sent: number; repliesCollected:
       await addStudyLog({ plan_id: plan.id, topic, directive: text, fingerprint: before ?? null });
       await updateTrainingPlan(plan.id, {
         study_cycles: plan.study_cycles + 1,
-        next_study_at: new Date(Date.now() + plan.study_frequency_hours * 3600_000).toISOString(),
+        next_study_at: nextSlot(plan.next_study_at, plan.study_frequency_hours),
       });
       await addPoints([
         {

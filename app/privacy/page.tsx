@@ -7,16 +7,19 @@ export default function PrivacyPage() {
     <main className="container page narrow legal">
       <span className="eyebrow section-eyebrow">Legal</span>
       <h2 className="section-title">Privacy Policy</h2>
-      <p className="mono" style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Last updated: August 27, 2026</p>
+      <p className="mono" style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Last updated: September 30, 2026</p>
 
       <h3>1. What we store</h3>
       <p>In our database (Supabase, hosted in the cloud):</p>
       <ul>
-        <li><b>Account:</b> the email address and account id read from your Builder key, sign-in timestamps.</li>
+        <li><b>Account:</b> the email address and HelloMinds account id you share when you connect, and sign-in timestamps.</li>
         <li>
-          <b>Your Builder API key</b> — stored <b>encrypted (AES-256-GCM)</b>. It is decrypted only
-          server-side, only to operate your Minds (training, listings, rental sessions, balance
-          reads). It is never shown to other users or sent anywhere except HelloMinds&apos; own API.
+          <b>Your HelloMinds connection</b> — the access and refresh tokens HelloMinds issues when you
+          click &ldquo;Connect with HelloMinds&rdquo;, stored <b>encrypted (AES-256-GCM)</b>. They
+          are decrypted only server-side, only to do what you approved on HelloMinds&apos; consent
+          screen (training, listings, rental sessions, balance reads), and are never shown to other
+          users or sent anywhere except HelloMinds. They are kept server-side, not in your browser,
+          so your Minds can keep training and serving renters while you&apos;re away.
         </li>
         <li><b>Marketplace data:</b> your listings, rentals, ratings, points events, wallet numbers (real-cognition snapshot, allowance, spend).</li>
         <li><b>Training data:</b> persona briefs you write, study topics, and the Minds&apos; study replies.</li>
@@ -25,7 +28,7 @@ export default function PrivacyPage() {
       <h3>2. What we don&apos;t store</h3>
       <p>
         Chat transcripts live on <b>HelloMinds</b>, not in our database — we read them through the
-        API to display your conversations. We don&apos;t store passwords (there are none), payment
+        API to display your conversations. We never see or store your HelloMinds password (you sign in on HelloMinds itself), payment
         details (there are no payments), or analytics profiles. Session cookies are essential-only;
         there is no ad tracking.
       </p>
@@ -39,17 +42,17 @@ export default function PrivacyPage() {
 
       <h3>4. Your choices</h3>
       <ul>
-        <li><b>Leave:</b> revoke your Builder key in the HelloMinds console — the app loses all access instantly.</li>
+        <li><b>Leave:</b> press <b>Disconnect</b> on your profile. We revoke our access at HelloMinds and delete the stored tokens; your Minds stop training and can&apos;t be rented until you connect again.</li>
         <li><b>Delete:</b> ask the operator to delete your account row, listings, rentals, wallet, and points, and we will.</li>
-        <li><b>Pause:</b> stop training or delist your Minds anytime; nothing runs against your account without your stored key.</li>
+        <li><b>Pause:</b> stop training or delist your Minds anytime; nothing runs against your account without an active connection.</li>
       </ul>
 
       <h3>5. Security, honestly</h3>
       <p>
-        Keys are encrypted at rest, sessions are signed httpOnly cookies, the database blocks
-        public access, and cross-account access is enforced server-side. This is still an
-        experimental demo — don&apos;t use it for anything sensitive, and prefer a Builder key from an
-        account you&apos;d be comfortable rotating.
+        Tokens are encrypted at rest, the app only holds the permissions you approved, sessions are
+        signed httpOnly cookies, the database blocks public access, and cross-account access is
+        enforced server-side. This is still an experimental demo — don&apos;t use it for anything
+        sensitive.
       </p>
 
       <p style={{ marginTop: 24 }}>
