@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pause, Play } from "lucide-react";
-import FrequencySlider from "@/components/FrequencySlider";
+import FrequencySlider, { measureCostPerCycle } from "@/components/FrequencySlider";
 import MindAvatar from "@/components/MindAvatar";
+import TopUpPanel from "@/components/TopUpPanel";
 
-type MindOpt = { mindId: string; name: string };
+type MindOpt = { mindId: string; name: string; balance?: number | null };
 type LogRow = { id: string; topic: string; reply: string | null; sent_at: string };
 type PlanRow = {
   id: string;
@@ -20,6 +21,8 @@ type PlanRow = {
   isStudying: boolean;
   nextStudyAt: string | null;
   balance: number | null;
+  /** Measured average daily cognition burn (14-day window), or null. */
+  perDay: number | null;
   log: LogRow[];
 };
 
@@ -32,13 +35,27 @@ const ARCHETYPES = [
   { key: "original", label: "Original Character", note: "your invention" },
 ];
 
-function PlanFrequency({ hours, disabled, onCommit }: { hours: number; disabled?: boolean; onCommit: (h: number) => void }) {
+function PlanFrequency({
+  hours,
+  disabled,
+  balance,
+  perDay,
+  onCommit,
+}: {
+  hours: number;
+  disabled?: boolean;
+  balance?: number | null;
+  perDay?: number | null;
+  onCommit: (h: number) => void;
+}) {
   const [value, setValue] = useState(hours);
   return (
     <FrequencySlider
       compact
       value={value}
       disabled={disabled}
+      balance={balance}
+      costPerCycle={measureCostPerCycle(perDay, hours)}
       onChange={setValue}
       onCommit={(h) => { if (h !== hours) onCommit(h); }}
     />
@@ -128,15 +145,20 @@ export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans
             <span className="score" style={{ marginLeft: "auto" }}>{p.cycles} study cycles</span>
           </div>
           {p.balance != null && p.balance < LOW_COGNITION ? (
-            <div className="notice" style={{ margin: 0, borderColor: "var(--danger)" }}>
-              <b>Low cognition ({Math.round(p.balance)}).</b> Training auto-pauses when a Mind runs
-              low so it isn&apos;t drained dry — top up this Mind on HelloMinds to keep it studying.
+            <div className="notice" style={{ margin: 0, borderColor: "var(--danger)", display: "grid", gap: 10 }}>
+              <div>
+                <b>Low cognition ({Math.round(p.balance)}).</b> Training auto-pauses when a Mind runs
+                low so it isn&apos;t drained dry — top it up to keep it studying.
+              </div>
+              <TopUpPanel mindId={p.mindId} mindName={p.mindName} />
             </div>
           ) : null}
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
             <PlanFrequency
               hours={p.frequencyHours}
               disabled={busy}
+              balance={p.balance}
+              perDay={p.perDay}
               onCommit={(h) => patchPlan(p.id, { frequencyHours: h })}
             />
             <button
@@ -237,6 +259,7 @@ export default function StudioWizard({ minds, plans }: { minds: MindOpt[]; plans
           <label>How often should it study?</label>
           <FrequencySlider
             value={form.frequencyHours}
+            balance={available.find((m) => m.mindId === form.mindId)?.balance}
             onChange={(h) => setForm({ ...form, frequencyHours: h })}
           />
         </div>

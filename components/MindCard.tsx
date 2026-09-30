@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
 import MindAvatar from "@/components/MindAvatar";
+import RunwayBadge from "@/components/RunwayBadge";
+import type { Runway } from "@/lib/runway";
 import type { Listing } from "@/lib/types";
 
 export function Stars({ rating, count }: { rating: number; count?: number }) {
@@ -30,7 +32,18 @@ export function LiveBadge({ live }: { live: boolean }) {
   );
 }
 
-export default function MindCard({ listing, score }: { listing: Listing; score?: number }) {
+export default function MindCard({
+  listing,
+  score,
+  runway,
+  offline = false,
+}: {
+  listing: Listing;
+  score?: number;
+  runway?: Runway | null;
+  /** The trainer's HelloMinds connection lapsed — the Mind can't answer. */
+  offline?: boolean;
+}) {
   const ts = score ?? listing.training_score;
   return (
     <Link href={`/mind/${listing.id}`} className="card mind-card">
@@ -46,6 +59,11 @@ export default function MindCard({ listing, score }: { listing: Listing; score?:
         <LiveBadge live={!!listing.mind_id} />
         {listing.label ? <span className="pill pill-label">{listing.label}</span> : null}
         <span className="pill pill-cat">{listing.category}</span>
+        {offline ? (
+          <span className="pill pill-demo" title="The trainer needs to reconnect their HelloMinds account">offline</span>
+        ) : runway ? (
+          <RunwayBadge runway={runway} title="How long this Mind can keep answering" />
+        ) : null}
       </div>
       <div className="meta-row">
         <span className="score">TS {ts}</span>

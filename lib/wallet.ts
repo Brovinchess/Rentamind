@@ -45,9 +45,9 @@ function toView(row: {
 }
 
 /** Sum the user's REAL cognition across all their Minds via their own key. */
-export async function readRealCognition(builderKey: string): Promise<number> {
-  const minds = await listMindsFor(builderKey);
-  const c = mindsFor(builderKey);
+export async function readRealCognition(accessToken: string): Promise<number> {
+  const minds = await listMindsFor(accessToken);
+  const c = mindsFor(accessToken);
   const balances = await Promise.allSettled(minds.map((m) => c.getCognitionBalance(m.mindId)));
   return balances.reduce(
     (sum, b) => sum + (b.status === "fulfilled" ? Number(b.value.cognition) || 0 : 0),
@@ -57,7 +57,7 @@ export async function readRealCognition(builderKey: string): Promise<number> {
 
 /** Sync the wallet's allowance from live balances. */
 export async function syncWallet(user: AuthedUser): Promise<WalletView> {
-  const real = await readRealCognition(user.builderKey);
+  const real = await readRealCognition(user.accessToken);
   const allowance = Math.min(
     WALLET_RULE.CAP,
     Math.max(WALLET_RULE.FLOOR, Math.round(real * WALLET_RULE.SHARE)),

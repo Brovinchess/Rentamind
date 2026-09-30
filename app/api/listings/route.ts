@@ -37,7 +37,7 @@ async function sendServiceDna(user: AuthedUser, listing: Listing): Promise<void>
   if (!listing.mind_id || listing.service_dna_sent_at) return;
   try {
     const alias = `ram-${listing.mind_id.slice(0, 8)}`;
-    const c = mindsFor(user.builderKey);
+    const c = mindsFor(user.accessToken);
     await c.ensureConversation(alias, listing.mind_id);
     await c.sendMessage({ alias, messageText: roleDnaMessage(user.email) });
     await updateListing(listing.id, { service_dna_sent_at: new Date().toISOString() });
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     if (!mindId || !title) {
       return NextResponse.json({ error: "mindId and title are required" }, { status: 400 });
     }
-    const owned = await listMindsFor(user.builderKey);
+    const owned = await listMindsFor(user.accessToken);
     const mind = owned.find((m) => m.mindId === mindId);
     if (!mind) {
       return NextResponse.json({ error: "That Mind isn't on your account" }, { status: 403 });

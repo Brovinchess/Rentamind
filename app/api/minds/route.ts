@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const user = await getAuthedUser();
     if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-    const items = await listMindsFor(user.builderKey);
+    const items = await listMindsFor(user.accessToken);
     return NextResponse.json({
       minds: items.map((m) => ({
         mindId: m.mindId,

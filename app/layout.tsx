@@ -31,7 +31,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav className="nav">
               <Link href="/marketplace">Marketplace</Link>
               {signedIn ? <Link href="/my-minds">My Minds</Link> : null}
-              {signedIn ? <Link href="/studio">Training Studio</Link> : null}
               <Link href="/rewards">Rewards</Link>
             </nav>
             {signedIn ? (

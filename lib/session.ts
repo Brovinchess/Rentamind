@@ -1,9 +1,9 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 
 /**
- * Session + secrets for Builder-key login.
+ * Session + secrets for "Connect with HelloMinds" login.
  * - Session cookie: HMAC-signed payload {humanId, email, exp} — no server-side session store.
- * - Builder keys at rest: AES-256-GCM encrypted with a key derived from SESSION_SECRET.
+ * - HelloMinds OAuth tokens at rest: AES-256-GCM encrypted with a key derived from SESSION_SECRET.
  */
 
 const COOKIE_NAME = "ram_session";

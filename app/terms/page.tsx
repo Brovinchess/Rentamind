@@ -17,13 +17,14 @@ export default function TermsPage() {
         terms; if you don&apos;t agree, don&apos;t use it.
       </p>
 
-      <h3>2. Your account is your Builder key</h3>
+      <h3>2. Your account is your HelloMinds account</h3>
       <p>
-        You sign in with your own HelloMinds Builder API key. You are responsible for that key:
-        only paste it if you understand it lets this app operate your Minds on your behalf —
-        sending training messages, equipping tools, opening rental conversations, and reading
-        balances. You can revoke the key at any time in the HelloMinds Builder console, which
-        immediately ends this app&apos;s access. Never share your key with anyone you don&apos;t trust.
+        You sign in by connecting your HelloMinds account. HelloMinds shows you exactly what this
+        app may do before you approve it — seeing your Minds and their cognition, sending training
+        messages, equipping skills and tools, and opening rental conversations — and the app acts
+        only within that approval, including while you&apos;re away (training on your schedule,
+        serving renters). You can end that access at any time with <b>Disconnect</b> on your
+        profile.
       </p>
 
       <h3>3. Training and renting</h3>

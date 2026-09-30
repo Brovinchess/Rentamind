@@ -1,4 +1,4 @@
-import { getBuilderKeyForEmail, type AuthedUser } from "./auth";
+import { getAccessTokenForEmail, type AuthedUser } from "./auth";
 import { getListing, getRental } from "./db";
 import { listMindsFor } from "./minds";
 import type { Listing, Rental } from "./types";
@@ -32,8 +32,8 @@ export type ChatAccess =
   | { error: string; status: number };
 
 /**
- * Trainer path: your own mindId — raw training channel via YOUR key.
- * Renter path: listingId + your rentalId — proxied session via the OWNER's stored key.
+ * Trainer path: your own mindId — raw training channel via YOUR HelloMinds connection.
+ * Renter path: listingId + your rentalId — proxied session via the OWNER's connection.
  */
 export async function resolveChatAccess(
   user: AuthedUser | null,
@@ -44,11 +44,11 @@ export async function resolveChatAccess(
   if (!user) return { error: "Sign in required", status: 401 };
 
   if (mindId) {
-    const owned = await listMindsFor(user.builderKey);
+    const owned = await listMindsFor(user.accessToken);
     if (!owned.some((m) => m.mindId === mindId)) {
       return { error: "That Mind isn't on your account", status: 404 };
     }
-    return { kind: "trainer", mindId, alias: stewardAlias(mindId), key: user.builderKey };
+    return { kind: "trainer", mindId, alias: stewardAlias(mindId), key: user.accessToken };
   }
   if (listingId) {
     const listing = await getListing(listingId);
@@ -64,8 +64,11 @@ export async function resolveChatAccess(
     if (rental.status !== "active" || new Date(rental.ends_at) <= new Date()) {
       return { error: "This rental has ended — rent the Mind again to keep chatting", status: 403 };
     }
-    const ownerKey = await getBuilderKeyForEmail(listing.steward_email);
-    if (!ownerKey) return { error: "This Mind's trainer is unavailable right now", status: 409 };
+    const ownerKey = await getAccessTokenForEmail(listing.steward_email);
+    if (!ownerKey) return {
+        error: "This Mind is offline — its trainer needs to reconnect their HelloMinds account. You weren't charged.",
+        status: 409,
+      };
     const alias = rental.conversation_alias ?? rentalAlias(listing.mind_id, rental.id);
     return { kind: "renter", mindId: listing.mind_id, alias, key: ownerKey, rental, listing };
   }

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import RentPanel from "@/components/RentPanel";
 import MindAvatar from "@/components/MindAvatar";
+import RunwayBadge from "@/components/RunwayBadge";
 import { LiveBadge, Stars } from "@/components/MindCard";
-import { getBuilderKeyForEmail } from "@/lib/auth";
+import { MIN_MIND_COGNITION } from "@/lib/mind-health";
+import { getAccessTokenForEmail } from "@/lib/auth";
 import { getListing, getRentalsForListing } from "@/lib/db";
 import { getLiveMindStats, trainingScore, type LiveMindStats } from "@/lib/minds";
 
@@ -16,12 +18,15 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   let stats: LiveMindStats | null = null;
   let score = listing.training_score;
-  const ownerKey = listing.mind_id ? await getBuilderKeyForEmail(listing.steward_email) : null;
+  const ownerKey = listing.mind_id ? await getAccessTokenForEmail(listing.steward_email) : null;
+  // Rentals run through the trainer's HelloMinds connection. Those last 30 days
+  // from sign-in, so a trainer who hasn't reconnected has a Mind nobody can reach.
+  const trainerOffline = !!listing.mind_id && !ownerKey;
   if (listing.mind_id && ownerKey) {
     stats = await getLiveMindStats(ownerKey, listing.mind_id);
     score = trainingScore({
       createdAt: listing.created_at,
-      usage30d: stats.usage30d,
+      usageWindow: stats.usageWindow,
       skillsCount: stats.skillsCount,
     });
   }
@@ -49,14 +54,17 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       <div className="stat-grid">
         <div className="stat"><div className="k">Training Score</div><div className="v">{score}<small> / 1000</small></div></div>
         <div className="stat"><div className="k">Price</div><div className="v">{Number(listing.price_per_message).toLocaleString()}<small> cognition / message</small></div></div>
+        {stats?.runway ? (
+          <div className="stat">
+            <div className="k">Cognition runway</div>
+            <div className="v" style={{ fontSize: "1.05rem" }}><RunwayBadge runway={stats.runway} /></div>
+          </div>
+        ) : null}
         {stats?.balance != null ? (
           <div className="stat"><div className="k">Live cognition balance</div><div className="v">{Math.round(stats.balance).toLocaleString()}</div></div>
         ) : null}
-        {stats?.usage30d != null ? (
-          <div className="stat"><div className="k">Cognition burned · 30d</div><div className="v">{stats.usage30d.toLocaleString()}</div></div>
-        ) : null}
-        {stats?.circleSize != null ? (
-          <div className="stat"><div className="k">Circle size</div><div className="v">{stats.circleSize}</div></div>
+        {stats?.usageWindow != null ? (
+          <div className="stat"><div className="k">Cognition burned · {stats.usageWindowDays ?? 14}d</div><div className="v">{stats.usageWindow.toLocaleString()}</div></div>
         ) : null}
         <div className="stat"><div className="k">Active rentals</div><div className="v">{activeRentals.length}<small> / {listing.max_concurrent}</small></div></div>
       </div>
@@ -82,7 +90,18 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </>
       ) : null}
 
-      {activeRentals.length >= listing.max_concurrent ? (
+      {trainerOffline ? (
+        <div className="notice" style={{ borderColor: "var(--warn)" }}>
+          <b>This Mind is offline.</b> Its trainer&apos;s HelloMinds connection has lapsed, so it
+          can&apos;t answer renters until they reconnect. Nothing has been charged.
+        </div>
+      ) : stats?.balance != null && stats.balance < MIN_MIND_COGNITION ? (
+        <div className="notice" style={{ borderColor: "var(--danger)" }}>
+          <b>This Mind is out of cognition.</b> It can&apos;t answer until its trainer tops it up, so
+          renting it now would leave you with a Mind that stays silent. Its trainer sees the same
+          warning on their dashboard.
+        </div>
+      ) : activeRentals.length >= listing.max_concurrent ? (
         <div className="notice">
           This Mind is fully rented right now ({activeRentals.length}/{listing.max_concurrent} slots).
           Check back when a rental window closes.

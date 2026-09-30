@@ -8,6 +8,7 @@ import { looksLikeInjection, wrapClientMessage, type TaskMode } from "@/lib/enve
 import { mindsFor } from "@/lib/minds";
 import { MIN_MIND_COGNITION, mindBalance } from "@/lib/mind-health";
 import { POINTS, SEASON } from "@/lib/points";
+import { optional, withTimeout } from "@/lib/with-timeout";
 
 export const maxDuration = 180;
 
@@ -25,8 +26,8 @@ export async function GET(req: Request) {
     if ("error" in r) return NextResponse.json({ error: r.error }, { status: r.status });
 
     const c = mindsFor(r.key);
-    await c.ensureConversation(r.alias, r.mindId);
-    const rows = await c.getHistory(r.alias, { limit: 50 });
+    await withTimeout(c.ensureConversation(r.alias, r.mindId), "ensureConversation");
+    const rows = await withTimeout(c.getHistory(r.alias, { limit: 50 }), "getHistory");
     rows.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
 
     let session = null;
@@ -99,9 +100,12 @@ export async function POST(req: Request) {
     }
 
     const c = mindsFor(r.key);
-    await c.ensureConversation(r.alias, r.mindId);
-    const before = await c.getLatestHistoryFingerprint(r.alias);
-    await c.sendMessage({ alias: r.alias, messageText: outgoing });
+    await withTimeout(c.ensureConversation(r.alias, r.mindId), "ensureConversation");
+    // Optional: this call hangs forever on Minds with big histories — i.e. the
+    // well-trained ones people actually rent. waitForReply still identifies the
+    // reply from `sentMessageText`, so losing the fingerprint costs us nothing.
+    const before = await optional(c.getLatestHistoryFingerprint(r.alias), "getLatestHistoryFingerprint");
+    await withTimeout(c.sendMessage({ alias: r.alias, messageText: outgoing }), "sendMessage");
 
     let walletBalance: number | null = null;
     if (r.kind === "renter" && price > 0) {

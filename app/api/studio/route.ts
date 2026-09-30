@@ -14,8 +14,8 @@ import { trainAlias } from "@/lib/study";
 export const maxDuration = 120;
 
 /** Best-effort: equip a verified web-search app so the Mind can research. */
-async function equipSearchTool(builderKey: string, mindId: string): Promise<string | null> {
-  const c = mindsFor(builderKey);
+async function equipSearchTool(accessToken: string, mindId: string): Promise<string | null> {
+  const c = mindsFor(accessToken);
   try {
     const isSearchApp = (name: unknown) => /tavily|perplexity|serp|web.?search/i.test(String(name ?? ""));
     const equipped = await c.listEquippedApps(mindId);
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     if (!mindId || !personaName?.trim() || !who?.trim()) {
       return NextResponse.json({ error: "mindId, personaName, and who are required" }, { status: 400 });
     }
-    const owned = await listMindsFor(user.builderKey);
+    const owned = await listMindsFor(user.accessToken);
     const trainee = owned.find((m) => m.mindId === mindId);
     if (!trainee) {
       return NextResponse.json({ error: "That Mind isn't on your account" }, { status: 403 });
@@ -83,14 +83,14 @@ export async function POST(req: Request) {
     };
 
     const alias = trainAlias(mindId);
-    const c = mindsFor(user.builderKey);
+    const c = mindsFor(user.accessToken);
     await c.ensureConversation(alias, mindId);
     await c.sendMessage({ alias, messageText: identityPrompt(archetype, brief) });
     const chunks = chunkSources(brief.sources);
     for (let i = 0; i < chunks.length; i++) {
       await c.sendMessage({ alias, messageText: feedPrompt(brief, chunks[i], i + 1, chunks.length) });
     }
-    const equippedTool = await equipSearchTool(user.builderKey, mindId);
+    const equippedTool = await equipSearchTool(user.accessToken, mindId);
 
     const plan = await createTrainingPlan({
       mind_id: mindId,
@@ -123,11 +123,32 @@ export async function PATCH(req: Request) {
 
     const patch: Record<string, unknown> = {};
     if (frequencyHours !== undefined) {
-      patch.study_frequency_hours = Math.max(1, Math.min(168, Number(frequencyHours) || 24));
+      const hours = Math.max(1, Math.min(168, Number(frequencyHours) || 24));
+      patch.study_frequency_hours = hours;
+
+      // Re-schedule the pending cycle against the NEW cadence. Without this the
+      // slider looks inert: drag 24h down to 1h and nothing happens for up to a
+      // day, because the already-queued next_study_at is untouched.
+      // We don't store the last study time, but it's implied:
+      //   lastStudy = next_study_at - oldFrequency
+      if (plan.next_study_at) {
+        const lastStudy = new Date(plan.next_study_at).getTime() - plan.study_frequency_hours * 3600_000;
+        // If the new interval has already elapsed, this lands in the past and
+        // the next scheduler pass picks it up — which is what the user expects.
+        patch.next_study_at = new Date(lastStudy + hours * 3600_000).toISOString();
+      } else {
+        patch.next_study_at = new Date().toISOString();
+      }
     }
     if (isStudying !== undefined) {
       patch.is_studying = !!isStudying;
-      if (isStudying && !plan.next_study_at) patch.next_study_at = new Date().toISOString();
+      // Resuming should study soon, not honour a stale far-future slot left
+      // over from before the pause.
+      if (isStudying) {
+        const queued = plan.next_study_at ? new Date(plan.next_study_at).getTime() : 0;
+        const soonest = Date.now() + plan.study_frequency_hours * 3600_000;
+        if (!queued || queued > soonest) patch.next_study_at = new Date().toISOString();
+      }
     }
     if (!Object.keys(patch).length) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

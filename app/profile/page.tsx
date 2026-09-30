@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import MindAvatar from "@/components/MindAvatar";
 import SignOutButton from "@/components/SignOutButton";
+import { Link2 } from "lucide-react";
+import DisconnectButton from "@/components/DisconnectButton";
 import { getAuthedUser } from "@/lib/auth";
+import { connectionStatus } from "@/lib/oauth";
 import {
   getAllPointsEvents,
   getListing,
@@ -40,7 +43,7 @@ export default async function ProfilePage({
     getRentalsByRenter(email).catch(() => []),
   ]);
   const [mindsList, listings, plans] = await Promise.all([
-    listMindsFor(user.builderKey).catch(() => []),
+    listMindsFor(user.accessToken).catch(() => []),
     getListingsForSteward(email).catch(() => []),
     getTrainingPlansForOwner(email).catch(() => []),
   ]);
@@ -56,6 +59,8 @@ export default async function ProfilePage({
       }))
       .sort((a, b) => b.pts - a.pts)
       .findIndex((r) => r.em === email) + 1;
+
+  const connection = await connectionStatus(user.humanId);
 
   const rentalLinks = await Promise.all(
     myRentals.slice(0, 8).map(async (r) => ({
@@ -95,6 +100,34 @@ export default async function ProfilePage({
         <div className="stat"><div className="k">In training</div><div className="v">{plans.length}</div></div>
         <div className="stat"><div className="k">Study cycles</div><div className="v">{plans.reduce((s, p) => s + p.study_cycles, 0)}</div></div>
         <div className="stat"><div className="k">Listed for rent</div><div className="v">{listings.filter((l) => l.is_active).length}</div></div>
+      </div>
+
+      <h3 style={{ marginTop: 28 }}>HelloMinds connection</h3>
+      <div className="card" style={{ marginTop: 10, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <Link2 size={18} aria-hidden style={{ color: "var(--brand)" }} />
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <b style={{ fontSize: "0.95rem" }}>Connected as {email}</b>
+          <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
+            Rent a Mind acts on your Minds only within what you approved on HelloMinds
+            {connection.scopes.length ? ` (${connection.scopes.length} permissions)` : ""}. Signing out
+            keeps your Minds training and rentable; disconnecting stops both.
+            {connection.expiresAt ? (
+              <>
+                {" "}HelloMinds connections last 30 days — reconnect by{" "}
+                <b>{connection.expiresAt.toLocaleDateString()}</b> or your Minds stop training and
+                can&apos;t be rented.
+              </>
+            ) : null}
+          </div>
+        </div>
+        {connection.expiringSoon ? (
+          <Link href="/login?next=/profile" className="pill pill-dry" style={{ textDecoration: "none" }}>
+            reconnect — {Math.max(0, Math.ceil(connection.daysLeft ?? 0))}d left
+          </Link>
+        ) : (
+          <span className="pill pill-live"><span className="dot" /> connected</span>
+        )}
+        <DisconnectButton />
       </div>
 
       <h3 style={{ marginTop: 28 }}>Your rental balance</h3>

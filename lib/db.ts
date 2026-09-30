@@ -190,12 +190,20 @@ export async function updateTrainingPlan(id: string, patch: Partial<TrainingPlan
   if (error) throw new Error(`plan update: ${error.message}`);
 }
 
+/**
+ * Plans due for a study cycle, **most overdue first**.
+ *
+ * The ordering is load-bearing: a pass only handles a few plans, and without it
+ * Postgres returned an arbitrary order, so whichever plan fell outside the cap
+ * was starved at random. That showed up as occasional 3h gaps on a 2h cadence.
+ */
 export async function getDuePlans(): Promise<TrainingPlan[]> {
   const { data, error } = await db()
     .from("ram_training_plans")
     .select("*")
     .eq("is_studying", true)
-    .lte("next_study_at", new Date().toISOString());
+    .lte("next_study_at", new Date().toISOString())
+    .order("next_study_at", { ascending: true });
   if (error) throw new Error(`due plans: ${error.message}`);
   return (data ?? []) as TrainingPlan[];
 }
@@ -249,10 +257,24 @@ export async function getPointsEvents(limit = 200): Promise<PointsEvent[]> {
   return (data ?? []) as PointsEvent[];
 }
 
+/**
+ * Every points event, paginated. A plain select stops at Supabase's 1,000-row
+ * default, which would silently undercount every total and the leaderboard once
+ * the table passes that size (785 rows on 2026-09-30, growing ~120/week).
+ */
 export async function getAllPointsEvents(): Promise<PointsEvent[]> {
-  const { data, error } = await db().from("ram_points_events").select("subject_email, subject_name, points");
-  if (error) throw new Error(`points all: ${error.message}`);
-  return (data ?? []) as PointsEvent[];
+  const PAGE = 1000;
+  const rows: PointsEvent[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db()
+      .from("ram_points_events")
+      .select("subject_email, subject_name, points")
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(`points all: ${error.message}`);
+    rows.push(...((data ?? []) as PointsEvent[]));
+    if (!data || data.length < PAGE) return rows;
+  }
 }
 
 /* ── Ratings ── */
