@@ -628,3 +628,40 @@ Side effect of the scope check: one test message ("Scope check from Rent a Mind�
   Builder keys (commented SQL at the bottom of the migration).
 - Max Verstappen and Mickey Mouse have been paused since Sep 20; not touched.
 - Supabase shows the org over its free-tier quota, with restriction from **Oct 4, 2026**.
+
+### Production deploy — 2026-09-30
+
+PR #1 merged (`fd57573`), Vercel production build Ready in 22s. Tested in production through
+Chrome:
+
+| Check | Result |
+|---|---|
+| `/login` serves "Connect with HelloMinds"; client ID present in the client bundle | ✅ |
+| Sign-in on rentamind.vercel.app | ✅ HelloMinds skipped consent (already granted) and returned a code; landed on `/my-minds` as rovin@ |
+| Same account, no duplicate | ✅ `af25d282…` updated at 03:46:38 by production; 2 accounts total |
+| Server-side refresh in production | ✅ token force-expired → `GET /profile` 200, log `[oauth] refreshed…`, new 15-min token, lock released |
+| Chat request no longer hangs | ✅ `POST /api/chat` to The Hulk returned (timed out cleanly) instead of hanging to the function limit |
+| `POST /api/auth/login` (deleted) | 200 — this is Vercel serving `/_not-found` for a POST (`x-matched-path: /_not-found`); a never-existing route behaves the same |
+
+### ⚠ Found in production: Minds stopped replying ~Sep 20–21 (HelloMinds side, predates this deploy)
+
+The production chat test got no reply. Checked directly:
+
+- **The Hulk**: no Mind reply in its last 40 messages (~4 days) — every one is ours.
+- **@applewatch**: a fresh, small conversation opened today (`ram-scopecheck`) — no reply after
+  30 min. So it isn't history size.
+- Mickey last replied Sep 21, Max Sep 24. Minds replied normally on Sep 16 (61s).
+- Daily cognition burn: The Hulk 300–500/day through Sep 20 (answering study prompts), then
+  **20–40/day from Sep 21** — the idle level @applewatch has always had — despite a study prompt
+  every 2h.
+
+Consequences under current code (not changed here):
+1. **Training points are awarded on send, not on reply** — The Hulk has kept earning +5 every
+   ~2h (~100 cycles) for prompts it never processed, against the "points are backed by
+   cognition spent" rule.
+2. **Renters are charged on send** — a silent Mind would take their cognition for nothing. No
+   rentals are active, so nobody has been charged.
+3. The study loop keeps messaging silent Minds indefinitely.
+
+Next: confirm with HelloMinds whether Minds on this account are processing messages; then award
+training points on *reply*, and only charge renters for answered messages.
